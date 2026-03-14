@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -48,7 +51,7 @@ export default function LoginPage() {
         return;
       }
 
-      setMensaje("Inicio de sesión exitoso.");
+      router.push("/dashboard");
     } catch {
       setMensaje("Ocurrió un error al iniciar sesión.");
     } finally {
