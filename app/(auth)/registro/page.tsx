@@ -9,6 +9,19 @@ export default function RegistroPage() {
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
 
+  async function continuarConGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: "https://simpleus.app",
+      },
+    });
+
+    if (error) {
+      setMensaje(error.message);
+    }
+  }
+
   async function registrarse() {
     try {
       setCargando(true);
@@ -24,7 +37,9 @@ export default function RegistroPage() {
         return;
       }
 
-      setMensaje("Cuenta creada. Revisa tu correo si Supabase pide confirmación.");
+      setMensaje(
+        "Cuenta creada. Revisa tu correo para confirmar tu cuenta. Si no ves el mensaje, revisa la carpeta de spam o promociones."
+      );
     } catch {
       setMensaje("Ocurrió un error al crear la cuenta.");
     } finally {
@@ -45,9 +60,35 @@ export default function RegistroPage() {
       }}
     >
       <h1 style={{ fontSize: "32px", margin: 0 }}>Crear cuenta</h1>
+
       <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
         Crea tu cuenta para guardar tu historial y usar SimpleUS de forma personal.
       </p>
+
+      <button
+        onClick={continuarConGoogle}
+        style={{
+          background: "#ffffff",
+          color: "#111827",
+          padding: "12px 16px",
+          borderRadius: "10px",
+          border: "1px solid #d1d5db",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}
+      >
+        Continuar con Google
+      </button>
+
+      <div
+        style={{
+          textAlign: "center",
+          color: "#6b7280",
+          fontSize: "14px",
+        }}
+      >
+        o
+      </div>
 
       <input
         type="email"

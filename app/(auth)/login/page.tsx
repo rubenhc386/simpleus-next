@@ -9,6 +9,19 @@ export default function LoginPage() {
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
 
+  async function continuarConGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: "https://simpleus.app",
+      },
+    });
+
+    if (error) {
+      setMensaje(error.message);
+    }
+  }
+
   async function iniciarSesion() {
     try {
       setCargando(true);
@@ -45,9 +58,35 @@ export default function LoginPage() {
       }}
     >
       <h1 style={{ fontSize: "32px", margin: 0 }}>Iniciar sesión</h1>
+
       <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
         Entra a tu cuenta para revisar tu historial y seguir usando SimpleUS.
       </p>
+
+      <button
+        onClick={continuarConGoogle}
+        style={{
+          background: "#ffffff",
+          color: "#111827",
+          padding: "12px 16px",
+          borderRadius: "10px",
+          border: "1px solid #d1d5db",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}
+      >
+        Continuar con Google
+      </button>
+
+      <div
+        style={{
+          textAlign: "center",
+          color: "#6b7280",
+          fontSize: "14px",
+        }}
+      >
+        o
+      </div>
 
       <input
         type="email"
