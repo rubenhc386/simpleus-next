@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function continuarConGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -23,6 +24,16 @@ export default function LoginPage() {
   }
 
   async function iniciarSesion() {
+    if (!email.trim()) {
+      setMensaje("Escribe tu correo electrónico.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setMensaje("Escribe tu contraseña.");
+      return;
+    }
+
     try {
       setCargando(true);
       setMensaje("");
@@ -100,17 +111,43 @@ export default function LoginPage() {
         }}
       />
 
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+      <div
         style={{
-          padding: "12px",
-          borderRadius: "10px",
-          border: "1px solid #d1d5db",
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
         }}
-      />
+      >
+        <input
+          type={showPassword ? "text" : "password"}
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{
+            flex: 1,
+            padding: "12px",
+            borderRadius: "10px",
+            border: "1px solid #d1d5db",
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          style={{
+            background: "#ffffff",
+            color: "#111827",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            border: "1px solid #d1d5db",
+            cursor: "pointer",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {showPassword ? "Ocultar" : "Ver"}
+        </button>
+      </div>
 
       <button
         onClick={iniciarSesion}
