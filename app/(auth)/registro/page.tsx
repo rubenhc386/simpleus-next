@@ -20,18 +20,23 @@ export default function RegistroPage() {
     let active = true;
 
     async function verificarSesion() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!active) return;
+        if (!active) return;
 
-      if (session) {
-        router.replace("/dashboard");
-        return;
+        if (session) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        setCheckingSession(false);
+      } catch {
+        if (!active) return;
+        setCheckingSession(false);
       }
-
-      setCheckingSession(false);
     }
 
     verificarSesion();
@@ -44,10 +49,15 @@ export default function RegistroPage() {
   async function continuarConGoogle() {
     setMensaje("");
 
+    const redirectTo =
+      typeof window !== "undefined"
+        ? window.location.origin + "/dashboard"
+        : "https://simpleus.app/dashboard";
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "https://simpleus.app/dashboard",
+        redirectTo,
       },
     });
 
