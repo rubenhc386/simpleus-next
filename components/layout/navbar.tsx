@@ -9,7 +9,7 @@ export default function Navbar() {
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.replace("/login");
   }
 
   return (
@@ -108,6 +108,7 @@ export default function Navbar() {
           </Link>
 
           <button
+            type="button"
             onClick={cerrarSesion}
             style={{
               background: "#ffffff",

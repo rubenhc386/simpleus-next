@@ -13,80 +13,70 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
 
     async function verificarSesion() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!active) return;
+        if (!active) return;
 
-      if (!session) {
+        if (!session) {
+          setAuthorized(false);
+          router.replace("/login");
+          return;
+        }
+
+        setAuthorized(true);
+      } catch {
+        if (!active) return;
+        setAuthorized(false);
         router.replace("/login");
-        return;
       }
-
-      setCheckingSession(false);
     }
 
     verificarSesion();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.replace("/login");
-      }
-    });
-
     return () => {
       active = false;
-      subscription.unsubscribe();
     };
   }, [router]);
 
-  if (checkingSession) {
+  if (authorized === null) {
     return (
       <div
         style={{
           minHeight: "100vh",
           display: "flex",
-          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           background: "#f9fafb",
+          padding: "20px",
         }}
       >
-        <Navbar />
-
-        <PageContainer>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-              paddingTop: "40px",
-              paddingBottom: "40px",
-            }}
-          >
-            <section
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e5e7eb",
-                borderRadius: "16px",
-                padding: "28px",
-              }}
-            >
-              Verificando sesión...
-            </section>
-          </div>
-        </PageContainer>
-
-        <Footer />
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            minWidth: "280px",
+            textAlign: "center",
+          }}
+        >
+          Verificando sesión...
+        </div>
       </div>
     );
+  }
+
+  if (authorized === false) {
+    return null;
   }
 
   return (
