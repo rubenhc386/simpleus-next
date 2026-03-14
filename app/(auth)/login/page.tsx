@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -12,12 +12,40 @@ export default function LoginPage() {
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function verificarSesion() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      if (session) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      setCheckingSession(false);
+    }
+
+    verificarSesion();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   async function continuarConGoogle() {
+    setMensaje("");
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "https://simpleus.app",
+        redirectTo: "https://simpleus.app/dashboard",
       },
     });
 
@@ -59,6 +87,30 @@ export default function LoginPage() {
     }
   }
 
+  if (checkingSession) {
+    return (
+      <div
+        style={{
+          maxWidth: "480px",
+          margin: "0 auto",
+          paddingTop: "40px",
+          paddingBottom: "40px",
+        }}
+      >
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "24px",
+          }}
+        >
+          Verificando sesión...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -78,6 +130,7 @@ export default function LoginPage() {
       </p>
 
       <button
+        type="button"
         onClick={continuarConGoogle}
         style={{
           background: "#ffffff",
@@ -153,6 +206,7 @@ export default function LoginPage() {
       </div>
 
       <button
+        type="button"
         onClick={iniciarSesion}
         disabled={cargando}
         style={{
