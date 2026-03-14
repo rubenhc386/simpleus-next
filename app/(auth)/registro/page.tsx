@@ -6,8 +6,11 @@ import { supabase } from "@/lib/supabase";
 export default function RegistroPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function continuarConGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -23,6 +26,31 @@ export default function RegistroPage() {
   }
 
   async function registrarse() {
+    if (!email.trim()) {
+      setMensaje("Escribe tu correo electrónico.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setMensaje("Escribe una contraseña.");
+      return;
+    }
+
+    if (!confirmPassword.trim()) {
+      setMensaje("Confirma tu contraseña.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setMensaje("Las contraseñas no coinciden.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setMensaje("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
     try {
       setCargando(true);
       setMensaje("");
@@ -62,7 +90,8 @@ export default function RegistroPage() {
       <h1 style={{ fontSize: "32px", margin: 0 }}>Crear cuenta</h1>
 
       <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
-        Crea tu cuenta para guardar tu historial y usar SimpleUS de forma personal.
+        Crea tu cuenta para guardar tu historial y usar SimpleUS de forma
+        personal.
       </p>
 
       <button
@@ -102,17 +131,81 @@ export default function RegistroPage() {
         }}
       />
 
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+      <div
         style={{
-          padding: "12px",
-          borderRadius: "10px",
-          border: "1px solid #d1d5db",
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
         }}
-      />
+      >
+        <input
+          type={showPassword ? "text" : "password"}
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{
+            flex: 1,
+            padding: "12px",
+            borderRadius: "10px",
+            border: "1px solid #d1d5db",
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          style={{
+            background: "#ffffff",
+            color: "#111827",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            border: "1px solid #d1d5db",
+            cursor: "pointer",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {showPassword ? "Ocultar" : "Ver"}
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
+        }}
+      >
+        <input
+          type={showConfirmPassword ? "text" : "password"}
+          placeholder="Confirmar contraseña"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          style={{
+            flex: 1,
+            padding: "12px",
+            borderRadius: "10px",
+            border: "1px solid #d1d5db",
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          style={{
+            background: "#ffffff",
+            color: "#111827",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            border: "1px solid #d1d5db",
+            cursor: "pointer",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {showConfirmPassword ? "Ocultar" : "Ver"}
+        </button>
+      </div>
 
       <button
         onClick={registrarse}
