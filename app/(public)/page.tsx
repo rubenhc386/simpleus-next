@@ -246,6 +246,233 @@ export default function Page() {
           </p>
         </section>
 
+        {/* MOCKUP DASHBOARD */}
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "22px",
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: "28px", margin: "0 0 10px 0" }}>
+              Así se ve SimpleUS por dentro
+            </h2>
+
+            <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
+              Este es un ejemplo visual del tipo de experiencia que recibe el
+              usuario dentro del dashboard de SimpleUS.
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: "#f3f4f6",
+              border: "1px solid #e5e7eb",
+              borderRadius: "18px",
+              padding: "18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: "20px",
+                    color: "#111827",
+                  }}
+                >
+                  Dashboard de SimpleUS
+                </div>
+
+                <div
+                  style={{
+                    color: "#6b7280",
+                    fontSize: "14px",
+                    marginTop: "4px",
+                  }}
+                >
+                  Plan gratuito: 2 de 3 análisis usados
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#dbeafe",
+                  color: "#1d4ed8",
+                  fontWeight: 700,
+                  padding: "8px 12px",
+                  borderRadius: "999px",
+                  fontSize: "13px",
+                }}
+              >
+                Usuario activo
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "16px",
+                padding: "20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+              }}
+            >
+              <div>
+                <strong>Analizar carta</strong>
+                <div
+                  style={{
+                    marginTop: "10px",
+                    background: "#f9fafb",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "12px",
+                    minHeight: "120px",
+                    padding: "14px",
+                    color: "#6b7280",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Dear customer, this notice is to inform you that your account
+                  requires attention before the due date shown below...
+                </div>
+              </div>
+
+              <div
+                style={{
+                  width: "fit-content",
+                  background: "#1d4ed8",
+                  color: "white",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  fontWeight: 600,
+                }}
+              >
+                Analizar carta
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "16px",
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "18px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <h3 style={{ margin: 0 }}>Mapa SimpleUS</h3>
+
+                <span
+                  style={{
+                    background: "#fef3c7",
+                    color: "#92400e",
+                    padding: "8px 12px",
+                    borderRadius: "999px",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                  }}
+                >
+                  Urgencia media
+                </span>
+              </div>
+
+              <div>
+                <strong>Qué es esta carta</strong>
+                <p
+                  style={{
+                    marginTop: "8px",
+                    color: "#4b5563",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  Posible aviso administrativo sobre una fecha límite o una acción
+                  pendiente.
+                </p>
+              </div>
+
+              <div>
+                <strong>Qué significa</strong>
+                <p
+                  style={{
+                    marginTop: "8px",
+                    color: "#4b5563",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  La carta parece comunicar una notificación que conviene revisar
+                  pronto para no dejar pasar una fecha importante.
+                </p>
+              </div>
+
+              <div>
+                <strong>Qué podrías hacer</strong>
+                <ul
+                  style={{
+                    marginTop: "8px",
+                    color: "#4b5563",
+                    lineHeight: 1.8,
+                  }}
+                >
+                  <li>Leer cuidadosamente el documento completo</li>
+                  <li>Identificar fechas y montos importantes</li>
+                  <li>Guardar una copia del aviso</li>
+                </ul>
+              </div>
+
+              <div
+                style={{
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  borderRadius: "14px",
+                  padding: "18px",
+                }}
+              >
+                <strong style={{ color: "#1d4ed8" }}>Mensaje de calma</strong>
+                <p
+                  style={{
+                    marginTop: "10px",
+                    color: "#1e3a8a",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  Respira. Muchas cartas son informativas o tienen solución. Lo
+                  importante es entender bien el contenido y revisar si hay alguna
+                  acción pendiente.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* DEMO VISUAL */}
         <section
           style={{
@@ -445,6 +672,142 @@ export default function Page() {
           </div>
         </section>
 
+        {/* FREE VS PRO */}
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "22px",
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: "28px", margin: "0 0 10px 0" }}>
+              Compara el plan gratuito y SimpleUS Pro
+            </h2>
+
+            <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
+              Empieza gratis y mejora tu experiencia cuando quieras más análisis
+              y más herramientas.
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                borderRadius: "14px",
+                padding: "22px",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: "20px",
+                  marginBottom: "8px",
+                }}
+              >
+                Plan gratuito
+              </div>
+
+              <p
+                style={{
+                  color: "#6b7280",
+                  lineHeight: 1.7,
+                  marginTop: 0,
+                }}
+              >
+                Ideal para probar SimpleUS y entender tus primeras cartas.
+              </p>
+
+              <ul
+                style={{
+                  lineHeight: 1.9,
+                  color: "#4b5563",
+                  paddingLeft: "20px",
+                  marginBottom: 0,
+                }}
+              >
+                <li>3 análisis incluidos</li>
+                <li>Subir texto</li>
+                <li>Historial básico</li>
+                <li>Acceso inicial al producto</li>
+              </ul>
+            </div>
+
+            <div
+              style={{
+                background: "#eff6ff",
+                border: "2px solid #1d4ed8",
+                borderRadius: "14px",
+                padding: "22px",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: "20px",
+                  marginBottom: "8px",
+                  color: "#1d4ed8",
+                }}
+              >
+                SimpleUS Pro
+              </div>
+
+              <p
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 800,
+                  margin: "0 0 12px 0",
+                  color: "#111827",
+                }}
+              >
+                $8.99 / mes
+              </p>
+
+              <ul
+                style={{
+                  lineHeight: 1.9,
+                  color: "#1e3a8a",
+                  paddingLeft: "20px",
+                  marginBottom: "18px",
+                }}
+              >
+                <li>Análisis ilimitados</li>
+                <li>Subir fotos de cartas</li>
+                <li>PDF en evolución</li>
+                <li>Historial completo</li>
+                <li>Más claridad para tu vida diaria</li>
+              </ul>
+
+              <Link
+                href="/registro"
+                style={{
+                  display: "inline-block",
+                  background: "#1d4ed8",
+                  color: "white",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: 700,
+                }}
+              >
+                Empezar con SimpleUS
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* BENEFICIOS */}
         <section
           style={{
@@ -472,59 +835,6 @@ export default function Page() {
             <li>Historial de cartas analizadas</li>
             <li>Menos estrés cuando recibes documentos en inglés</li>
           </ul>
-        </section>
-
-        {/* PRECIO */}
-        <section
-          style={{
-            background: "#f9fafb",
-            border: "1px solid #e5e7eb",
-            borderRadius: "16px",
-            padding: "32px",
-            textAlign: "center",
-          }}
-        >
-          <h2 style={{ fontSize: "28px", marginBottom: "12px" }}>
-            SimpleUS Pro
-          </h2>
-
-          <p
-            style={{
-              fontSize: "30px",
-              fontWeight: 700,
-              margin: "0 0 12px 0",
-            }}
-          >
-            $8.99 / mes
-          </p>
-
-          <p
-            style={{
-              color: "#6b7280",
-              lineHeight: 1.7,
-              maxWidth: "700px",
-              margin: "0 auto 20px auto",
-            }}
-          >
-            Analiza todas las cartas que necesites, guarda tu historial y usa
-            herramientas pensadas para darte más claridad en tu vida diaria en
-            Estados Unidos.
-          </p>
-
-          <Link
-            href="/registro"
-            style={{
-              display: "inline-block",
-              background: "#1d4ed8",
-              color: "white",
-              padding: "14px 20px",
-              borderRadius: "10px",
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            Crear cuenta
-          </Link>
         </section>
 
         {/* FAQ */}
