@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PublicNavbar from "@/components/marketing/public-navbar";
+import PublicFooter from "@/components/marketing/public-footer";
 
 export default function Page() {
   return (
@@ -131,6 +132,82 @@ export default function Page() {
           </div>
         </section>
 
+        {/* CONFIANZA */}
+        <section
+          style={{
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "18px",
+          }}
+        >
+          <h2 style={{ fontSize: "28px", margin: 0 }}>
+            Pensado para nuestra comunidad hispana en EE.UU.
+          </h2>
+
+          <p style={{ color: "#1e3a8a", lineHeight: 1.8, margin: 0 }}>
+            SimpleUS no nació como una idea genérica. Fue creado para ayudar a
+            personas reales que reciben cartas en inglés y necesitan claridad sin
+            sentirse perdidas o abrumadas.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Creado con empatía</strong>
+              <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "8px" }}>
+                Pensado para personas que viven en EE.UU. y quieren entender mejor
+                documentos importantes en inglés.
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Explicaciones claras</strong>
+              <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "8px" }}>
+                El enfoque de SimpleUS es explicar con palabras simples, humanas y
+                fáciles de comprender.
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Construido por RubenHC</strong>
+              <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "8px" }}>
+                Detrás del proyecto hay una visión real de ayudar a la comunidad
+                hispana con tecnología útil y cercana.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* PROBLEMA */}
         <section
           style={{
@@ -167,6 +244,109 @@ export default function Page() {
             documento, ubicar el nivel de urgencia y tener una guía inicial en
             español claro.
           </p>
+        </section>
+
+        {/* DEMO VISUAL */}
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "22px",
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: "28px", margin: "0 0 10px 0" }}>
+              Así se ve un Mapa SimpleUS
+            </h2>
+
+            <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
+              Después de analizar una carta, SimpleUS te muestra una explicación
+              clara en español para ayudarte a entenderla mejor.
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "16px",
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "18px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <h3 style={{ margin: 0 }}>Mapa SimpleUS</h3>
+
+              <span
+                style={{
+                  background: "#fef3c7",
+                  color: "#92400e",
+                  padding: "8px 12px",
+                  borderRadius: "999px",
+                  fontWeight: 700,
+                  fontSize: "13px",
+                }}
+              >
+                Urgencia media
+              </span>
+            </div>
+
+            <div>
+              <strong>Qué es esta carta</strong>
+              <p style={{ marginTop: "8px", color: "#4b5563", lineHeight: 1.7 }}>
+                Posible aviso administrativo sobre una fecha límite o una acción
+                pendiente.
+              </p>
+            </div>
+
+            <div>
+              <strong>Qué significa</strong>
+              <p style={{ marginTop: "8px", color: "#4b5563", lineHeight: 1.7 }}>
+                La carta parece informar sobre un trámite o una notificación que
+                conviene revisar con atención para no pasar por alto una fecha
+                importante.
+              </p>
+            </div>
+
+            <div>
+              <strong>Qué podrías hacer</strong>
+              <ul style={{ marginTop: "8px", color: "#4b5563", lineHeight: 1.8 }}>
+                <li>Leer cuidadosamente el documento completo</li>
+                <li>Identificar fechas y montos importantes</li>
+                <li>Guardar una copia del aviso</li>
+              </ul>
+            </div>
+
+            <div
+              style={{
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong style={{ color: "#1d4ed8" }}>Mensaje de calma</strong>
+              <p style={{ marginTop: "10px", color: "#1e3a8a", lineHeight: 1.7 }}>
+                Respira. Muchas cartas son informativas o tienen solución. Lo más
+                importante es entender qué dicen y revisar si hay alguna acción
+                que debas tomar.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* TIPOS DE CARTAS */}
@@ -347,6 +527,66 @@ export default function Page() {
           </Link>
         </section>
 
+        {/* FAQ */}
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+          }}
+        >
+          <h2 style={{ fontSize: "28px", margin: 0 }}>
+            Preguntas frecuentes
+          </h2>
+
+          <div>
+            <strong>¿SimpleUS reemplaza a un abogado o a un experto?</strong>
+            <p style={{ color: "#6b7280", lineHeight: 1.7, marginTop: "8px" }}>
+              No. SimpleUS te ayuda a entender cartas en español claro y te da
+              orientación general, pero no sustituye asesoría legal, financiera
+              o profesional especializada.
+            </p>
+          </div>
+
+          <div>
+            <strong>¿Qué tipo de cartas puedo analizar?</strong>
+            <p style={{ color: "#6b7280", lineHeight: 1.7, marginTop: "8px" }}>
+              Puedes usar SimpleUS para cartas del DMV, IRS, hospitales,
+              seguros, bancos, multas, immigration, utilities y otros documentos
+              administrativos en inglés.
+            </p>
+          </div>
+
+          <div>
+            <strong>¿Puedo subir una foto del documento?</strong>
+            <p style={{ color: "#6b7280", lineHeight: 1.7, marginTop: "8px" }}>
+              Sí. Puedes pegar texto o subir una foto. La opción de PDF está en
+              fase beta mientras seguimos mejorándola.
+            </p>
+          </div>
+
+          <div>
+            <strong>¿Necesito pagar para empezar?</strong>
+            <p style={{ color: "#6b7280", lineHeight: 1.7, marginTop: "8px" }}>
+              No. Puedes comenzar con el plan gratuito y usar tus análisis
+              iniciales antes de decidir si quieres pasar a SimpleUS Pro.
+            </p>
+          </div>
+
+          <div>
+            <strong>¿Mi información queda guardada?</strong>
+            <p style={{ color: "#6b7280", lineHeight: 1.7, marginTop: "8px" }}>
+              Tu cuenta guarda historial para ayudarte a revisar tus análisis
+              anteriores. Más adelante seguiremos fortaleciendo seguridad,
+              privacidad y controles del producto.
+            </p>
+          </div>
+        </section>
+
         {/* CREADOR */}
         <section
           style={{
@@ -432,6 +672,8 @@ export default function Page() {
           </div>
         </section>
       </div>
+
+      <PublicFooter />
     </>
   );
 }
