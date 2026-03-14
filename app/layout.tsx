@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import PageContainer from "@/components/layout/page-container";
@@ -13,26 +13,24 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
-
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
 
     async function verificarSesion() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!isMounted) return;
+      if (!active) return;
 
       if (!session) {
         router.replace("/login");
         return;
       }
 
-      setCheckingAuth(false);
+      setCheckingSession(false);
     }
 
     verificarSesion();
@@ -46,12 +44,12 @@ export default function AppLayout({
     });
 
     return () => {
-      isMounted = false;
+      active = false;
       subscription.unsubscribe();
     };
-  }, [router, pathname]);
+  }, [router]);
 
-  if (checkingAuth) {
+  if (checkingSession) {
     return (
       <div
         style={{
