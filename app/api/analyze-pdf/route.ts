@@ -1,10 +1,15 @@
 import OpenAI from "openai";
 import { PdfReader } from "pdfreader";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+type ParsedAnalysis = {
+  tipo: string;
+  significado: string;
+  urgencia: string;
+  pasos: string[];
+  calma: string;
+  modo?: string;
+};
 
 function extraerTextoDesdePDF(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -30,14 +35,80 @@ function extraerTextoDesdePDF(buffer: Buffer): Promise<string> {
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!file) {
+    if (!openaiKey) {
+      return Response.json(
+        { error: "Falta OPENAI_API_KEY." },
+        { status: 500 }
+      );
+    }
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return Response.json(
+        { error: "Faltan variables de Supabase en el servidor." },
+        { status: 500 }
+      );
+    }
+
+    const client = new OpenAI({
+      apiKey: openaiKey,
+    });
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    const formData = await req.formData();
+    const file = formData.get("file");
+    const userId = formData.get("userId");
+
+    if (!(file instanceof File)) {
       return Response.json(
         { error: "No se recibió archivo." },
         { status: 400 }
       );
+    }
+
+    if (!userId || typeof userId !== "string") {
+      return Response.json(
+        { error: "No se recibió un userId válido." },
+        { status: 400 }
+      );
+    }
+
+    const { data: profileData } = await supabaseAdmin
+      .from("profiles")
+      .select("plan")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const isPro = profileData?.plan === "pro";
+
+    if (!isPro) {
+      const { count, error: countError } = await supabaseAdmin
+        .from("analyses")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      if (countError) {
+        console.error("Error contando análisis de PDF:", countError);
+        return Response.json(
+          { error: "No se pudo verificar el límite del plan." },
+          { status: 500 }
+        );
+      }
+
+      if ((count ?? 0) >= 3) {
+        return Response.json(
+          {
+            error:
+              "Has llegado al límite del plan gratuito. Puedes actualizar a SimpleUS Pro.",
+            limitReached: true,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -53,7 +124,7 @@ export async function POST(req: Request) {
     }
 
     const prompt = `
-Eres SimpleUS by RubenHC, una aplicación que ayuda a hispanohablantes en Estados Unidos a entender cartas administrativas en inglés.
+Eres SimpleUS by RubenHC3_, una aplicación que ayuda a hispanohablantes en Estados Unidos a entender cartas administrativas en inglés.
 
 Tu tarea es analizar el texto de una carta y devolver solamente JSON válido con esta estructura exacta:
 
@@ -67,13 +138,13 @@ Tu tarea es analizar el texto de una carta y devolver solamente JSON válido con
 }
 
 Reglas:
-•⁠  ⁠Responde siempre en español claro.
-•⁠  ⁠No des asesoría legal.
-•⁠  ⁠No inventes hechos que no estén sustentados por el texto.
-•⁠  ⁠Si el texto es ambiguo, dilo con honestidad.
-•⁠  ⁠El campo "pasos" debe ser un arreglo de 3 a 5 pasos concretos.
-•⁠  ⁠El tono debe ser claro, humano y calmado.
-•⁠  ⁠Devuelve solamente JSON válido, sin texto extra.
+- Responde siempre en español claro.
+- No des asesoría legal.
+- No inventes hechos que no estén sustentados por el texto.
+- Si el texto es ambiguo, dilo con honestidad.
+- El campo "pasos" debe ser un arreglo de 3 a 5 pasos concretos.
+- El tono debe ser claro, humano y calmado.
+- Devuelve solamente JSON válido, sin texto extra.
 
 Texto de la carta:
 """
@@ -95,14 +166,7 @@ ${texto}
       );
     }
 
-    let parsed: {
-      tipo: string;
-      significado: string;
-      urgencia: string;
-      pasos: string[];
-      calma: string;
-      modo?: string;
-    };
+    let parsed: ParsedAnalysis;
 
     try {
       parsed = JSON.parse(rawText);
@@ -116,8 +180,9 @@ ${texto}
       );
     }
 
-    const { error: insertError } = await supabase.from("analyses").insert([
+    const { error: insertError } = await supabaseAdmin.from("analyses").insert([
       {
+        user_id: userId,
         original_text: texto,
         tipo: parsed.tipo,
         significado: parsed.significado,
@@ -130,6 +195,10 @@ ${texto}
 
     if (insertError) {
       console.error("Error guardando análisis de PDF en Supabase:", insertError);
+      return Response.json(
+        { error: "El análisis se generó, pero no se pudo guardar." },
+        { status: 500 }
+      );
     }
 
     return Response.json(parsed);
