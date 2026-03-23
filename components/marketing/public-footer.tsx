@@ -182,7 +182,7 @@ export default function PublicFooter() {
             fontSize: "14px",
           }}
         >
-          <span>©️ 2026 SimpleUS by RubenHC. Todos los derechos reservados.</span>
+          <span>©️ 2026 SimpleUS by RubenHC3_. Todos los derechos reservados.</span>
 
           <span>Hecho para nuestra comunidad hispana en EE.UU.</span>
         </div>

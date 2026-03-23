@@ -50,7 +50,7 @@ export default function LoginPage() {
     const redirectTo =
       typeof window !== "undefined"
         ? window.location.origin + "/dashboard"
-        : "https://localhost:3000/dashboard";
+        : "https://simpleus.app/dashboard";
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -89,7 +89,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch {
       setMensaje("Ocurrió un error al iniciar sesión.");
     } finally {
@@ -139,6 +139,7 @@ export default function LoginPage() {
         Entra a tu cuenta para revisar tu historial y seguir usando SimpleUS.
       </p>
 
+      {/* Google */}
       <button
         type="button"
         onClick={continuarConGoogle}
@@ -165,6 +166,7 @@ export default function LoginPage() {
         o
       </div>
 
+      {/* Email */}
       <input
         type="email"
         placeholder="Correo electrónico"
@@ -177,13 +179,8 @@ export default function LoginPage() {
         }}
       />
 
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          alignItems: "center",
-        }}
-      >
+      {/* Password */}
+      <div style={{ display: "flex", gap: "8px" }}>
         <input
           type={showPassword ? "text" : "password"}
           placeholder="Contraseña"
@@ -202,19 +199,18 @@ export default function LoginPage() {
           onClick={() => setShowPassword(!showPassword)}
           style={{
             background: "#ffffff",
-            color: "#111827",
-            padding: "12px 14px",
-            borderRadius: "10px",
             border: "1px solid #d1d5db",
+            borderRadius: "10px",
+            padding: "12px",
             cursor: "pointer",
             fontWeight: 600,
-            whiteSpace: "nowrap",
           }}
         >
           {showPassword ? "Ocultar" : "Ver"}
         </button>
       </div>
 
+      {/* Login button */}
       <button
         type="button"
         onClick={iniciarSesion}
@@ -232,8 +228,32 @@ export default function LoginPage() {
         {cargando ? "Entrando..." : "Iniciar sesión"}
       </button>
 
+      {/* 🔥 NUEVO: volver */}
+      <button
+        type="button"
+        onClick={() => router.push("/")}
+        style={{
+          marginTop: "6px",
+          background: "#ffffff",
+          color: "#374151",
+          padding: "12px 16px",
+          borderRadius: "10px",
+          border: "1px solid #d1d5db",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}
+      >
+        Volver al inicio
+      </button>
+
+      <p style={{ fontSize: "13px", color: "#6b7280", textAlign: "center" }}>
+        Puedes explorar SimpleUS sin iniciar sesión.
+      </p>
+
       {mensaje && (
-        <div style={{ color: "#374151", lineHeight: 1.6 }}>{mensaje}</div>
+        <div style={{ color: "#b91c1c", fontSize: "14px" }}>
+          {mensaje}
+        </div>
       )}
     </div>
   );

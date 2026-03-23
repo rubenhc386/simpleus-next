@@ -39,7 +39,7 @@ export default function Page() {
                 marginBottom: "12px",
               }}
             >
-              SimpleUS by RubenHC
+              SimpleUS by RubenHC3_
             </div>
 
             <h1

@@ -20,7 +20,7 @@ export default function Footer() {
         }}
       >
         <div>
-          <strong>SimpleUS by RubenHC</strong>
+          <strong>SimpleUS by RubenHC3_</strong>
           <div
             style={{
               color: "#6b7280",
