@@ -50,7 +50,7 @@ export default function LoginPage() {
     const redirectTo =
       typeof window !== "undefined"
         ? window.location.origin + "/dashboard"
-        : "https://simpleus.app/dashboard";
+        : "https://localhost:3000/dashboard";
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

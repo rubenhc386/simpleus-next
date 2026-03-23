@@ -19,18 +19,25 @@ export default function PrivateAppLayout({
     let active = true;
 
     async function verificarSesion() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!active) return;
+        if (!active) return;
 
-      if (!session) {
+        if (!user) {
+          router.replace("/login");
+          router.refresh();
+          return;
+        }
+
+        setCheckingSession(false);
+      } catch {
+        if (!active) return;
         router.replace("/login");
-        return;
+        router.refresh();
       }
-
-      setCheckingSession(false);
     }
 
     verificarSesion();
@@ -40,7 +47,11 @@ export default function PrivateAppLayout({
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         router.replace("/login");
+        router.refresh();
+        return;
       }
+
+      setCheckingSession(false);
     });
 
     return () => {
@@ -87,9 +98,7 @@ export default function PrivateAppLayout({
       }}
     >
       <Navbar />
-
       <PageContainer>{children}</PageContainer>
-
       <Footer />
     </div>
   );

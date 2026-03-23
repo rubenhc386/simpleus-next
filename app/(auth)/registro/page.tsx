@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +16,7 @@ export default function RegistroPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [registroExitoso, setRegistroExitoso] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -52,7 +54,7 @@ export default function RegistroPage() {
     const redirectTo =
       typeof window !== "undefined"
         ? window.location.origin + "/dashboard"
-        : "https://simpleus.app/dashboard";
+        : "http://localhost:3000/dashboard";
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -95,6 +97,7 @@ export default function RegistroPage() {
     try {
       setCargando(true);
       setMensaje("");
+      setRegistroExitoso(false);
 
       const { error } = await supabase.auth.signUp({
         email,
@@ -106,6 +109,7 @@ export default function RegistroPage() {
         return;
       }
 
+      setRegistroExitoso(true);
       setMensaje(
         "Cuenta creada. Revisa tu correo para confirmar tu cuenta. Si no ves el mensaje, revisa la carpeta de spam o promociones."
       );
@@ -162,14 +166,16 @@ export default function RegistroPage() {
       <button
         type="button"
         onClick={continuarConGoogle}
+        disabled={registroExitoso}
         style={{
           background: "#ffffff",
           color: "#111827",
           padding: "12px 16px",
           borderRadius: "10px",
           border: "1px solid #d1d5db",
-          cursor: "pointer",
+          cursor: registroExitoso ? "not-allowed" : "pointer",
           fontWeight: 600,
+          opacity: registroExitoso ? 0.7 : 1,
         }}
       >
         Continuar con Google
@@ -190,10 +196,12 @@ export default function RegistroPage() {
         placeholder="Correo electrónico"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        disabled={registroExitoso}
         style={{
           padding: "12px",
           borderRadius: "10px",
           border: "1px solid #d1d5db",
+          background: registroExitoso ? "#f9fafb" : "#ffffff",
         }}
       />
 
@@ -209,26 +217,30 @@ export default function RegistroPage() {
           placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          disabled={registroExitoso}
           style={{
             flex: 1,
             padding: "12px",
             borderRadius: "10px",
             border: "1px solid #d1d5db",
+            background: registroExitoso ? "#f9fafb" : "#ffffff",
           }}
         />
 
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
+          disabled={registroExitoso}
           style={{
             background: "#ffffff",
             color: "#111827",
             padding: "12px 14px",
             borderRadius: "10px",
             border: "1px solid #d1d5db",
-            cursor: "pointer",
+            cursor: registroExitoso ? "not-allowed" : "pointer",
             fontWeight: 600,
             whiteSpace: "nowrap",
+            opacity: registroExitoso ? 0.7 : 1,
           }}
         >
           {showPassword ? "Ocultar" : "Ver"}
@@ -247,26 +259,30 @@ export default function RegistroPage() {
           placeholder="Confirmar contraseña"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
+          disabled={registroExitoso}
           style={{
             flex: 1,
             padding: "12px",
             borderRadius: "10px",
             border: "1px solid #d1d5db",
+            background: registroExitoso ? "#f9fafb" : "#ffffff",
           }}
         />
 
         <button
           type="button"
           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          disabled={registroExitoso}
           style={{
             background: "#ffffff",
             color: "#111827",
             padding: "12px 14px",
             borderRadius: "10px",
             border: "1px solid #d1d5db",
-            cursor: "pointer",
+            cursor: registroExitoso ? "not-allowed" : "pointer",
             fontWeight: 600,
             whiteSpace: "nowrap",
+            opacity: registroExitoso ? 0.7 : 1,
           }}
         >
           {showConfirmPassword ? "Ocultar" : "Ver"}
@@ -276,22 +292,76 @@ export default function RegistroPage() {
       <button
         type="button"
         onClick={registrarse}
-        disabled={cargando}
+        disabled={cargando || registroExitoso}
         style={{
-          background: cargando ? "#93c5fd" : "#1d4ed8",
+          background: cargando || registroExitoso ? "#93c5fd" : "#1d4ed8",
           color: "white",
           padding: "12px 16px",
           borderRadius: "10px",
           border: "none",
-          cursor: cargando ? "not-allowed" : "pointer",
+          cursor: cargando || registroExitoso ? "not-allowed" : "pointer",
           fontWeight: 600,
         }}
       >
-        {cargando ? "Creando cuenta..." : "Crear cuenta"}
+        {cargando
+          ? "Creando cuenta..."
+          : registroExitoso
+          ? "Cuenta creada"
+          : "Crear cuenta"}
       </button>
 
       {mensaje && (
-        <div style={{ color: "#374151", lineHeight: 1.6 }}>{mensaje}</div>
+        <div
+          style={{
+            color: registroExitoso ? "#166534" : "#374151",
+            lineHeight: 1.6,
+            background: registroExitoso ? "#ecfdf5" : "transparent",
+            border: registroExitoso ? "1px solid #86efac" : "none",
+            borderRadius: registroExitoso ? "12px" : "0",
+            padding: registroExitoso ? "14px 16px" : "0",
+          }}
+        >
+          {mensaje}
+        </div>
+      )}
+
+      {registroExitoso && (
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <Link
+            href="/login"
+            style={{
+              background: "#1d4ed8",
+              color: "#ffffff",
+              padding: "12px 16px",
+              borderRadius: "10px",
+              textDecoration: "none",
+              fontWeight: 700,
+            }}
+          >
+            Ir a iniciar sesión
+          </Link>
+
+          <Link
+            href="/"
+            style={{
+              background: "#ffffff",
+              color: "#111827",
+              padding: "12px 16px",
+              borderRadius: "10px",
+              border: "1px solid #d1d5db",
+              textDecoration: "none",
+              fontWeight: 700,
+            }}
+          >
+            Volver al inicio
+          </Link>
+        </div>
       )}
     </div>
   );

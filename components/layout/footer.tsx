@@ -43,7 +43,7 @@ export default function Footer() {
           <Link href="/">Inicio</Link>
           <Link href="/como-funciona">Cómo funciona</Link>
           <Link href="/precios">Precios</Link>
-          <Link href="/faq">FAQ</Link>
+          <Link href="/registro">Crear cuenta</Link>
         </div>
 
         <div

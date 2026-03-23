@@ -45,27 +45,65 @@ export default function Page() {
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
+  const [plan, setPlan] = useState<"free" | "pro">("free");
 
-  async function cargarConteo() {
+  const freeLimit = 3;
+  const isPro = plan === "pro";
+  const isBlocked = !isPro && analysisCount >= freeLimit;
+
+  async function cargarConteoYPlan() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user) {
+      setPlan("free");
+      setAnalysisCount(0);
+      setLimitReached(false);
+      return;
+    }
 
-    const { count } = await supabase
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const nextPlan = !profileError && profileData?.plan === "pro" ? "pro" : "free";
+    setPlan(nextPlan);
+
+    const { count, error: countError } = await supabase
       .from("analyses")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id);
 
-    setAnalysisCount(count ?? 0);
+    if (countError) {
+      console.error("Error cargando conteo:", countError);
+      return;
+    }
+
+    const nextCount = count ?? 0;
+    setAnalysisCount(nextCount);
+
+    if (nextPlan === "pro") {
+      setLimitReached(false);
+    } else {
+      setLimitReached(nextCount >= freeLimit);
+    }
   }
 
   useEffect(() => {
-    cargarConteo();
+    cargarConteoYPlan();
   }, []);
 
   async function analizarCarta() {
+    if (isBlocked) {
+      setLimitReached(true);
+      setError("");
+      setResultado(null);
+      return;
+    }
+
     if (!texto.trim()) {
       setError("Pega primero el texto de una carta.");
       setResultado(null);
@@ -82,6 +120,10 @@ export default function Page() {
         data: { user },
       } = await supabase.auth.getUser();
 
+      if (!user) {
+        throw new Error("No se encontro una sesion activa.");
+      }
+
       const res = await fetch("/api/analyze-text", {
         method: "POST",
         headers: {
@@ -89,15 +131,15 @@ export default function Page() {
         },
         body: JSON.stringify({
           texto,
-          userId: user?.id ?? null,
+          userId: user.id,
         }),
       });
 
       const data = await res.json();
 
-      if (data?.limitReached) {
+      if (data?.limitReached && !isPro) {
         setLimitReached(true);
-        await cargarConteo();
+        await cargarConteoYPlan();
         return;
       }
 
@@ -106,12 +148,12 @@ export default function Page() {
       }
 
       setResultado(data);
-      await cargarConteo();
+      await cargarConteoYPlan();
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : "Ocurrió un error al analizar la carta.";
+          : "Ocurrio un error al analizar la carta.";
 
       setError(message);
     } finally {
@@ -157,31 +199,60 @@ export default function Page() {
               margin: 0,
             }}
           >
-            Pega el texto de una carta en inglés y SimpleUS generará un Mapa
-            SimpleUS para ayudarte a entender qué es, qué significa, qué tan
-            urgente parece y qué podrías considerar hacer.
+            Pega el texto de una carta en ingles y SimpleUS generara un Mapa
+            SimpleUS para ayudarte a entender que es, que significa, que tan
+            urgente parece y que podrias considerar hacer.
           </p>
         </div>
 
         <div
           style={{
-            background: "#f9fafb",
-            border: "1px solid #e5e7eb",
+            background: isPro
+              ? "#ecfdf5"
+              : isBlocked
+              ? "#fff7ed"
+              : "#f9fafb",
+            border: isPro
+              ? "1px solid #86efac"
+              : isBlocked
+              ? "1px solid #fdba74"
+              : "1px solid #e5e7eb",
             borderRadius: "12px",
             padding: "14px 16px",
-            color: "#374151",
+            color: isPro ? "#166534" : isBlocked ? "#9a3412" : "#374151",
             fontSize: "14px",
             fontWeight: 600,
           }}
         >
-          Plan gratuito: {analysisCount} de 3 análisis usados
+          {isPro ? (
+            <>Plan <strong>PRO activo</strong></>
+          ) : (
+            <>Plan gratuito: {analysisCount} de {freeLimit} analisis usados</>
+          )}
         </div>
 
+        {isBlocked && !isPro && (
+          <div
+            style={{
+              background: "#fff7ed",
+              border: "1px solid #fdba74",
+              borderRadius: "12px",
+              padding: "14px 16px",
+              color: "#9a3412",
+              lineHeight: 1.6,
+            }}
+          >
+            Ya alcanzaste el limite del plan gratuito. Para seguir analizando
+            cartas, necesitaremos activar SimpleUS Pro.
+          </div>
+        )}
+
         <textarea
-          placeholder="Pega aquí el texto de la carta que recibiste..."
+          placeholder="Pega aqui el texto de la carta que recibiste..."
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           rows={12}
+          disabled={isBlocked}
           style={{
             width: "100%",
             padding: "14px",
@@ -191,6 +262,8 @@ export default function Page() {
             fontFamily: "Arial, Helvetica, sans-serif",
             fontSize: "15px",
             lineHeight: 1.5,
+            background: isBlocked ? "#f9fafb" : "#ffffff",
+            color: isBlocked ? "#6b7280" : "#111827",
           }}
         />
 
@@ -203,19 +276,24 @@ export default function Page() {
           }}
         >
           <button
+            type="button"
             onClick={analizarCarta}
-            disabled={cargando}
+            disabled={cargando || isBlocked}
             style={{
-              background: cargando ? "#93c5fd" : "#1d4ed8",
+              background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
               color: "white",
               padding: "12px 18px",
               borderRadius: "10px",
               border: "none",
-              cursor: cargando ? "not-allowed" : "pointer",
+              cursor: cargando || isBlocked ? "not-allowed" : "pointer",
               fontWeight: 600,
             }}
           >
-            {cargando ? "Analizando..." : "Analizar carta"}
+            {isBlocked
+              ? "Limite alcanzado"
+              : cargando
+              ? "Analizando..."
+              : "Analizar carta"}
           </button>
 
           {resultado?.modo && (
@@ -239,97 +317,91 @@ export default function Page() {
         </div>
       </section>
 
-      {limitReached && (
-  <section
-    style={{
-      background: "#ffffff",
-      border: "1px solid #e5e7eb",
-      borderRadius: "16px",
-      padding: "28px",
-      display: "flex",
-      flexDirection: "column",
-      gap: "20px",
-    }}
-  >
-    <h2 style={{ margin: 0 }}>
-      Has llegado al límite del plan gratuito
-    </h2>
+      {limitReached && !isPro && (
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>Has llegado al limite del plan gratuito</h2>
 
-    <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
-      Ya utilizaste los <strong>3 análisis gratuitos</strong>.  
-      Puedes actualizar a <strong>SimpleUS Pro</strong> para seguir
-      analizando cartas sin límite.
-    </p>
+          <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
+            Ya utilizaste los <strong>3 analisis gratuitos</strong>. Puedes
+            actualizar a <strong>SimpleUS Pro</strong> para seguir analizando
+            cartas sin limite.
+          </p>
 
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "20px",
-      }}
-    >
-      <div
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: "12px",
-          padding: "18px",
-        }}
-      >
-        <strong>Plan gratuito</strong>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "20px",
+            }}
+          >
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                padding: "18px",
+              }}
+            >
+              <strong>Plan gratuito</strong>
+              <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
+                <li>3 analisis de cartas</li>
+                <li>Subir texto</li>
+                <li>Historial basico</li>
+              </ul>
+            </div>
 
-        <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
-          <li>3 análisis de cartas</li>
-          <li>Subir texto</li>
-          <li>Historial básico</li>
-        </ul>
-      </div>
+            <div
+              style={{
+                border: "2px solid #1d4ed8",
+                borderRadius: "12px",
+                padding: "18px",
+                background: "#eff6ff",
+              }}
+            >
+              <strong>SimpleUS Pro</strong>
+              <p style={{ fontSize: "20px", fontWeight: 700 }}>$8.99 / mes</p>
+              <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
+                <li>Analisis ilimitados</li>
+                <li>Subir fotos de cartas</li>
+                <li>Analizar PDFs</li>
+                <li>Historial completo</li>
+                <li>Explicaciones claras en espanol</li>
+              </ul>
+            </div>
+          </div>
 
-      <div
-        style={{
-          border: "2px solid #1d4ed8",
-          borderRadius: "12px",
-          padding: "18px",
-          background: "#eff6ff",
-        }}
-      >
-        <strong>SimpleUS Pro</strong>
+          <button
+            type="button"
+            style={{
+              marginTop: "10px",
+              background: "#1d4ed8",
+              color: "white",
+              padding: "14px",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            Proximamente disponible
+          </button>
 
-        <p style={{ fontSize: "20px", fontWeight: 700 }}>
-          $8.99 / mes
-        </p>
-
-        <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
-          <li>Análisis ilimitados</li>
-          <li>Subir fotos de cartas</li>
-          <li>Analizar PDFs</li>
-          <li>Historial completo</li>
-          <li>Explicaciones claras en español</li>
-        </ul>
-      </div>
-    </div>
-
-    <button
-      style={{
-        marginTop: "10px",
-        background: "#1d4ed8",
-        color: "white",
-        padding: "14px",
-        borderRadius: "10px",
-        border: "none",
-        fontWeight: 700,
-        cursor: "pointer",
-        fontSize: "16px",
-      }}
-    >
-      Próximamente disponible
-    </button>
-
-    <p style={{ fontSize: "13px", color: "#6b7280" }}>
-      Estamos preparando el lanzamiento de SimpleUS Pro.
-      Pronto podrás desbloquear análisis ilimitados.
-    </p>
-  </section>
-)}
+          <p style={{ fontSize: "13px", color: "#6b7280" }}>
+            Estamos preparando el lanzamiento de SimpleUS Pro. Pronto podras
+            desbloquear analisis ilimitados.
+          </p>
+        </section>
+      )}
 
       {resultado && urgenciaStyles && (
         <section
@@ -369,14 +441,14 @@ export default function Page() {
           </div>
 
           <div>
-            <strong>Qué es esta carta</strong>
+            <strong>Que es esta carta</strong>
             <p style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.tipo}
             </p>
           </div>
 
           <div>
-            <strong>Qué significa</strong>
+            <strong>Que significa</strong>
             <p style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.significado}
             </p>
@@ -390,7 +462,7 @@ export default function Page() {
           </div>
 
           <div>
-            <strong>Qué podrías hacer</strong>
+            <strong>Que podrias hacer</strong>
             <ul style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.pasos.map((paso, index) => (
                 <li key={index}>{paso}</li>

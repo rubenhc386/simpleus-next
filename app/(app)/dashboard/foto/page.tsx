@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type ResultadoMapa = {
   tipo: string;
@@ -42,17 +43,58 @@ export default function FotoPage() {
   const [resultado, setResultado] = useState<ResultadoMapa | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [limitReached, setLimitReached] = useState(false);
+  const [analysisCount, setAnalysisCount] = useState(0);
 
-  async function convertirABase64(file: File): Promise<string> {
+  const freeLimit = 3;
+  const isBlocked = analysisCount >= freeLimit;
+
+  async function cargarConteo() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setAnalysisCount(0);
+      return;
+    }
+
+    const { count, error: countError } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (countError) {
+      console.error("Error cargando conteo de foto:", countError);
+      return;
+    }
+
+    const nextCount = count ?? 0;
+    setAnalysisCount(nextCount);
+    setLimitReached(nextCount >= freeLimit);
+  }
+
+  useEffect(() => {
+    cargarConteo();
+  }, []);
+
+  async function convertirABase64(fileToConvert: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(fileToConvert);
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = reject;
     });
   }
 
   async function analizarFoto() {
+    if (isBlocked) {
+      setLimitReached(true);
+      setResultado(null);
+      setError("");
+      return;
+    }
+
     if (!file) {
       setError("Selecciona primero una imagen.");
       return;
@@ -62,29 +104,49 @@ export default function FotoPage() {
       setCargando(true);
       setError("");
       setResultado(null);
+      setLimitReached(false);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("No se encontro una sesion activa.");
+      }
 
       const imageBase64 = await convertirABase64(file);
 
-      const res = await fetch("/api/analyze-photo", {
+      const res = await fetch("/api/analyze-foto", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageBase64 }),
+        body: JSON.stringify({
+          imageBase64,
+          userId: user.id,
+        }),
       });
 
       const data = await res.json();
+
+      if (data?.limitReached) {
+        setLimitReached(true);
+        await cargarConteo();
+        return;
+      }
 
       if (!res.ok) {
         throw new Error(data?.error || "No se pudo analizar la foto.");
       }
 
       setResultado(data);
+      await cargarConteo();
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : "Ocurrió un error al analizar la foto.";
+          : "Ocurrio un error al analizar la foto.";
+
       setError(message);
     } finally {
       setCargando(false);
@@ -121,35 +183,68 @@ export default function FotoPage() {
             Analizar carta con foto
           </h1>
           <p style={{ color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
-            Sube una foto de la carta y SimpleUS intentará entenderla para
+            Sube una foto de la carta y SimpleUS intentara entenderla para
             generar un Mapa SimpleUS.
           </p>
         </div>
 
-<label
-  style={{
-    display: "inline-block",
-    background: "#f3f4f6",
-    border: "1px solid #d1d5db",
-    padding: "12px 16px",
-    borderRadius: "10px",
-    cursor: "pointer",
-    width: "fit-content",
-    fontWeight: 600,
-  }}
->
-  Seleccionar imagen
-  <input
-    type="file"
-    accept="image/*"
-    style={{ display: "none" }}
-    onChange={(e) => {
-      if (e.target.files?.[0]) {
-        setFile(e.target.files[0]);
-      }
-    }}
-  />
-</label>
+        <div
+          style={{
+            background: isBlocked ? "#fff7ed" : "#f9fafb",
+            border: isBlocked ? "1px solid #fdba74" : "1px solid #e5e7eb",
+            borderRadius: "12px",
+            padding: "14px 16px",
+            color: isBlocked ? "#9a3412" : "#374151",
+            fontSize: "14px",
+            fontWeight: 600,
+          }}
+        >
+          Plan gratuito: {analysisCount} de {freeLimit} analisis usados
+        </div>
+
+        {isBlocked && (
+          <div
+            style={{
+              background: "#fff7ed",
+              border: "1px solid #fdba74",
+              borderRadius: "12px",
+              padding: "14px 16px",
+              color: "#9a3412",
+              lineHeight: 1.6,
+            }}
+          >
+            Ya alcanzaste el limite del plan gratuito. Para seguir analizando
+            cartas por foto, necesitaremos activar SimpleUS Pro.
+          </div>
+        )}
+
+        <label
+          style={{
+            display: "inline-block",
+            background: isBlocked ? "#e5e7eb" : "#f3f4f6",
+            border: "1px solid #d1d5db",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            cursor: isBlocked ? "not-allowed" : "pointer",
+            width: "fit-content",
+            fontWeight: 600,
+            color: isBlocked ? "#6b7280" : "#111827",
+          }}
+        >
+          Seleccionar imagen
+          <input
+            type="file"
+            accept="image/*"
+            disabled={isBlocked}
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                setFile(e.target.files[0]);
+                setError("");
+              }
+            }}
+          />
+        </label>
 
         {file && (
           <div style={{ color: "#4b5563" }}>
@@ -166,19 +261,24 @@ export default function FotoPage() {
           }}
         >
           <button
+            type="button"
             onClick={analizarFoto}
-            disabled={cargando}
+            disabled={cargando || isBlocked}
             style={{
-              background: cargando ? "#93c5fd" : "#1d4ed8",
+              background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
               color: "white",
               padding: "12px 18px",
               borderRadius: "10px",
               border: "none",
-              cursor: cargando ? "not-allowed" : "pointer",
+              cursor: cargando || isBlocked ? "not-allowed" : "pointer",
               fontWeight: 600,
             }}
           >
-            {cargando ? "Analizando foto..." : "Analizar foto"}
+            {isBlocked
+              ? "Limite alcanzado"
+              : cargando
+              ? "Analizando foto..."
+              : "Analizar foto"}
           </button>
 
           {error && (
@@ -186,6 +286,45 @@ export default function FotoPage() {
           )}
         </div>
       </section>
+
+      {limitReached && (
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>Has llegado al limite del plan gratuito</h2>
+
+          <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
+            Ya utilizaste los <strong>3 analisis gratuitos</strong>. Puedes
+            actualizar a <strong>SimpleUS Pro</strong> para seguir analizando
+            cartas sin limite.
+          </p>
+
+          <button
+            type="button"
+            style={{
+              marginTop: "10px",
+              background: "#1d4ed8",
+              color: "white",
+              padding: "14px",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            Proximamente disponible
+          </button>
+        </section>
+      )}
 
       {resultado && urgenciaStyles && (
         <section
@@ -225,14 +364,14 @@ export default function FotoPage() {
           </div>
 
           <div>
-            <strong>Qué es esta carta</strong>
+            <strong>Que es esta carta</strong>
             <p style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.tipo}
             </p>
           </div>
 
           <div>
-            <strong>Qué significa</strong>
+            <strong>Que significa</strong>
             <p style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.significado}
             </p>
@@ -246,7 +385,7 @@ export default function FotoPage() {
           </div>
 
           <div>
-            <strong>Qué podrías hacer</strong>
+            <strong>Que podrias hacer</strong>
             <ul style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.pasos.map((paso, index) => (
                 <li key={index}>{paso}</li>

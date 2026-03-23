@@ -1,32 +1,88 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+
+type ResultadoMapa = {
+  tipo: string;
+  significado: string;
+  urgencia: string;
+  pasos: string[];
+  calma: string;
+  modo?: string;
+};
+
+function getUrgenciaStyles(urgencia: string) {
+  const value = urgencia.toLowerCase();
+
+  if (value.includes("alta")) {
+    return {
+      bg: "#fee2e2",
+      color: "#991b1b",
+      label: "Alta urgencia",
+    };
+  }
+
+  if (value.includes("media")) {
+    return {
+      bg: "#fef3c7",
+      color: "#92400e",
+      label: "Urgencia media",
+    };
+  }
+
+  return {
+    bg: "#dcfce7",
+    color: "#166534",
+    label: "Baja urgencia",
+  };
+}
 
 export default function PdfPage() {
   const [file, setFile] = useState<File | null>(null);
+  const [resultado, setResultado] = useState<ResultadoMapa | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
   async function analizarPDF() {
     if (!file) {
-      setError("Selecciona primero un PDF.");
+      setError("Selecciona primero un archivo PDF.");
       return;
     }
 
     try {
       setCargando(true);
       setError("");
+      setResultado(null);
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const formData = new FormData();
+      formData.append("file", file);
 
-      setError(
-        "PDF en beta: algunos PDFs pueden fallar dependiendo de cómo fueron generados. Si no funciona, prueba subir una foto del documento o pegar el texto directamente."
-      );
+      const res = await fetch("/api/analyze-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "No se pudo analizar el PDF.");
+      }
+
+      setResultado(data);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Ocurrió un error al analizar el PDF.";
+      setError(message);
     } finally {
       setCargando(false);
     }
   }
+
+  const urgenciaStyles = resultado
+    ? getUrgenciaStyles(resultado.urgencia)
+    : null;
 
   return (
     <div
@@ -51,66 +107,52 @@ export default function PdfPage() {
       >
         <div>
           <h1 style={{ fontSize: "32px", margin: "0 0 10px 0" }}>
-            Analizar carta desde PDF
+            Analizar carta en PDF
           </h1>
+          <div
+  style={{
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    fontSize: "14px",
+    color: "#374151",
+    width: "fit-content",
+  }}
+>
+  Plan gratuito: <strong>0 de 3</strong> análisis usados
+</div>
+
           <p style={{ color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
-            Sube un PDF con texto y SimpleUS intentará generar un Mapa SimpleUS.
+            Sube un archivo PDF y SimpleUS intentará extraer el texto para
+            generar un Mapa SimpleUS.
           </p>
         </div>
 
-        <div
-          style={{
-            background: "#fff7ed",
-            border: "1px solid #fdba74",
-            borderRadius: "14px",
-            padding: "16px",
-            color: "#9a3412",
-            lineHeight: 1.6,
-          }}
-        >
-          <strong>PDF en beta:</strong> algunos PDFs pueden fallar dependiendo de
-          cómo fueron generados. Si no funciona, prueba subir una{" "}
-          <Link
-            href="/dashboard/foto"
-            style={{ fontWeight: 700, textDecoration: "underline" }}
-          >
-            foto del documento
-          </Link>{" "}
-          o{" "}
-          <Link
-            href="/dashboard/analizar"
-            style={{ fontWeight: 700, textDecoration: "underline" }}
-          >
-            pegar el texto directamente
-          </Link>
-          .
-        </div>
-
-        <label
-          style={{
-            display: "inline-block",
-            background: "#f3f4f6",
-            border: "1px solid #d1d5db",
-            padding: "12px 16px",
-            borderRadius: "10px",
-            cursor: "pointer",
-            width: "fit-content",
-            fontWeight: 600,
-          }}
-        >
-          Seleccionar PDF
-          <input
-            type="file"
-            accept="application/pdf"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                setFile(e.target.files[0]);
-                setError("");
-              }
-            }}
-          />
-        </label>
+<label
+  style={{
+    display: "inline-block",
+    background: "#ffffff",
+    border: "1px solid #d1d5db",
+    borderRadius: "10px",
+    padding: "12px 16px",
+    cursor: "pointer",
+    fontWeight: 600,
+    width: "fit-content",
+  }}
+>
+  Seleccionar PDF
+  <input
+    type="file"
+    accept="application/pdf"
+    onChange={(e) => {
+      if (e.target.files?.[0]) {
+        setFile(e.target.files[0]);
+      }
+    }}
+    style={{ display: "none" }}
+  />
+</label>
 
         {file && (
           <div style={{ color: "#4b5563" }}>
@@ -139,42 +181,97 @@ export default function PdfPage() {
               fontWeight: 600,
             }}
           >
-            {cargando ? "Revisando PDF..." : "Analizar PDF"}
+            {cargando ? "Analizando PDF..." : "Analizar PDF"}
           </button>
 
           {error && (
             <span style={{ color: "#b91c1c", fontSize: "14px" }}>{error}</span>
           )}
         </div>
+      </section>
 
-        <div
+      {resultado && urgenciaStyles && (
+        <section
           style={{
-            background: "#f9fafb",
+            background: "#ffffff",
             border: "1px solid #e5e7eb",
-            borderRadius: "14px",
-            padding: "18px",
-            color: "#4b5563",
-            lineHeight: 1.6,
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "22px",
           }}
         >
-          Mientras estabilizamos PDF, la forma más confiable de usar SimpleUS es
-          con{" "}
-          <Link
-            href="/dashboard/foto"
-            style={{ fontWeight: 700, textDecoration: "underline" }}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
           >
-            foto
-          </Link>{" "}
-          o{" "}
-          <Link
-            href="/dashboard/analizar"
-            style={{ fontWeight: 700, textDecoration: "underline" }}
+            <h2 style={{ margin: 0 }}>Mapa SimpleUS</h2>
+
+            <span
+              style={{
+                background: urgenciaStyles.bg,
+                color: urgenciaStyles.color,
+                padding: "8px 12px",
+                borderRadius: "999px",
+                fontWeight: 700,
+                fontSize: "13px",
+              }}
+            >
+              {urgenciaStyles.label}
+            </span>
+          </div>
+
+          <div>
+            <strong>Qué es esta carta</strong>
+            <p style={{ marginTop: "8px", color: "#4b5563" }}>
+              {resultado.tipo}
+            </p>
+          </div>
+
+          <div>
+            <strong>Qué significa</strong>
+            <p style={{ marginTop: "8px", color: "#4b5563" }}>
+              {resultado.significado}
+            </p>
+          </div>
+
+          <div>
+            <strong>Nivel de urgencia</strong>
+            <p style={{ marginTop: "8px", color: "#4b5563" }}>
+              {resultado.urgencia}
+            </p>
+          </div>
+
+          <div>
+            <strong>Qué podrías hacer</strong>
+            <ul style={{ marginTop: "8px", color: "#4b5563" }}>
+              {resultado.pasos.map((paso, index) => (
+                <li key={index}>{paso}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              borderRadius: "14px",
+              padding: "18px",
+            }}
           >
-            texto
-          </Link>
-          .
-        </div>
-      </section>
+            <strong style={{ color: "#1d4ed8" }}>Mensaje de calma</strong>
+            <p style={{ marginTop: "10px", color: "#1e3a8a" }}>
+              {resultado.calma}
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
