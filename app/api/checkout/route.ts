@@ -1,24 +1,37 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-);
-
 export async function POST(req: Request) {
   try {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+
+    if (!stripeSecretKey) {
+      throw new Error("Falta STRIPE_SECRET_KEY.");
+    }
 
     if (!appUrl) {
-      throw new Error("Falta NEXT_PUBLIC_APP_URL en variables de entorno.");
+      throw new Error("Falta NEXT_PUBLIC_APP_URL.");
     }
 
-    if (!process.env.NEXT_PUBLIC_STRIPE_PRICE_ID) {
+    if (!supabaseUrl) {
+      throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL.");
+    }
+
+    if (!supabaseAnonKey) {
+      throw new Error("Falta NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    }
+
+    if (!priceId) {
       throw new Error("Falta NEXT_PUBLIC_STRIPE_PRICE_ID.");
     }
+
+    const stripe = new Stripe(stripeSecretKey);
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     const authHeader = req.headers.get("authorization");
 
@@ -41,7 +54,7 @@ export async function POST(req: Request) {
       mode: "subscription",
       line_items: [
         {
-          price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -53,7 +66,7 @@ export async function POST(req: Request) {
     });
 
     if (!session.url) {
-      throw new Error("Stripe no devolvió URL.");
+      throw new Error("Stripe no devolvió una URL de pago.");
     }
 
     return Response.json({ url: session.url });
