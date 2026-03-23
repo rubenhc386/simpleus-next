@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -69,7 +70,8 @@ export default function Page() {
       .eq("id", user.id)
       .maybeSingle();
 
-    const nextPlan = !profileError && profileData?.plan === "pro" ? "pro" : "free";
+    const nextPlan =
+      !profileError && profileData?.plan === "pro" ? "pro" : "free";
     setPlan(nextPlan);
 
     const { count, error: countError } = await supabase
@@ -121,7 +123,7 @@ export default function Page() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        throw new Error("No se encontro una sesion activa.");
+        throw new Error("No se encontró una sesión activa.");
       }
 
       const res = await fetch("/api/analyze-text", {
@@ -153,7 +155,7 @@ export default function Page() {
       const message =
         err instanceof Error
           ? err.message
-          : "Ocurrio un error al analizar la carta.";
+          : "Ocurrió un error al analizar la carta.";
 
       setError(message);
     } finally {
@@ -199,9 +201,9 @@ export default function Page() {
               margin: 0,
             }}
           >
-            Pega el texto de una carta en ingles y SimpleUS generara un Mapa
-            SimpleUS para ayudarte a entender que es, que significa, que tan
-            urgente parece y que podrias considerar hacer.
+            Pega el texto de una carta en inglés y SimpleUS generará un Mapa
+            SimpleUS para ayudarte a entender qué es, qué significa, qué tan
+            urgente parece y qué podrías considerar hacer.
           </p>
         </div>
 
@@ -227,7 +229,9 @@ export default function Page() {
           {isPro ? (
             <>Plan <strong>PRO activo</strong></>
           ) : (
-            <>Plan gratuito: {analysisCount} de {freeLimit} analisis usados</>
+            <>
+              Plan gratuito: {analysisCount} de {freeLimit} análisis usados
+            </>
           )}
         </div>
 
@@ -242,13 +246,13 @@ export default function Page() {
               lineHeight: 1.6,
             }}
           >
-            Ya alcanzaste el limite del plan gratuito. Para seguir analizando
+            Ya alcanzaste el límite del plan gratuito. Para seguir analizando
             cartas, necesitaremos activar SimpleUS Pro.
           </div>
         )}
 
         <textarea
-          placeholder="Pega aqui el texto de la carta que recibiste..."
+          placeholder="Pega aquí el texto de la carta que recibiste..."
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           rows={12}
@@ -290,7 +294,7 @@ export default function Page() {
             }}
           >
             {isBlocked
-              ? "Limite alcanzado"
+              ? "Límite alcanzado"
               : cargando
               ? "Analizando..."
               : "Analizar carta"}
@@ -329,12 +333,12 @@ export default function Page() {
             gap: "20px",
           }}
         >
-          <h2 style={{ margin: 0 }}>Has llegado al limite del plan gratuito</h2>
+          <h2 style={{ margin: 0 }}>Has llegado al límite del plan gratuito</h2>
 
           <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
-            Ya utilizaste los <strong>3 analisis gratuitos</strong>. Puedes
+            Ya utilizaste los <strong>3 análisis gratuitos</strong>. Puedes
             actualizar a <strong>SimpleUS Pro</strong> para seguir analizando
-            cartas sin limite.
+            cartas sin límite.
           </p>
 
           <div
@@ -353,9 +357,9 @@ export default function Page() {
             >
               <strong>Plan gratuito</strong>
               <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
-                <li>3 analisis de cartas</li>
+                <li>3 análisis de cartas</li>
                 <li>Subir texto</li>
-                <li>Historial basico</li>
+                <li>Historial básico</li>
               </ul>
             </div>
 
@@ -370,120 +374,267 @@ export default function Page() {
               <strong>SimpleUS Pro</strong>
               <p style={{ fontSize: "20px", fontWeight: 700 }}>$8.99 / mes</p>
               <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
-                <li>Analisis ilimitados</li>
+                <li>Análisis ilimitados</li>
                 <li>Subir fotos de cartas</li>
                 <li>Analizar PDFs</li>
                 <li>Historial completo</li>
-                <li>Explicaciones claras en espanol</li>
+                <li>Explicaciones claras en español</li>
               </ul>
             </div>
           </div>
 
-          <button
-            type="button"
+          <Link
+            href="/pro"
             style={{
+              display: "inline-block",
               marginTop: "10px",
               background: "#1d4ed8",
               color: "white",
-              padding: "14px",
+              padding: "14px 18px",
               borderRadius: "10px",
-              border: "none",
+              textDecoration: "none",
               fontWeight: 700,
-              cursor: "pointer",
-              fontSize: "16px",
+              width: "fit-content",
             }}
           >
-            Proximamente disponible
-          </button>
-
-          <p style={{ fontSize: "13px", color: "#6b7280" }}>
-            Estamos preparando el lanzamiento de SimpleUS Pro. Pronto podras
-            desbloquear analisis ilimitados.
-          </p>
+            Ver SimpleUS Pro
+          </Link>
         </section>
       )}
 
       {resultado && urgenciaStyles && (
-        <section
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "16px",
-            padding: "28px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "22px",
-          }}
-        >
-          <div
+        <>
+          <section
             style={{
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: "16px",
+              padding: "28px",
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "12px",
-              flexWrap: "wrap",
+              flexDirection: "column",
+              gap: "22px",
             }}
           >
-            <h2 style={{ margin: 0 }}>Mapa SimpleUS</h2>
-
-            <span
+            <div
               style={{
-                background: urgenciaStyles.bg,
-                color: urgenciaStyles.color,
-                padding: "8px 12px",
-                borderRadius: "999px",
-                fontWeight: 700,
-                fontSize: "13px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
               }}
             >
-              {urgenciaStyles.label}
-            </span>
-          </div>
+              <h2 style={{ margin: 0 }}>Mapa SimpleUS</h2>
 
-          <div>
-            <strong>Que es esta carta</strong>
-            <p style={{ marginTop: "8px", color: "#4b5563" }}>
-              {resultado.tipo}
-            </p>
-          </div>
+              <span
+                style={{
+                  background: urgenciaStyles.bg,
+                  color: urgenciaStyles.color,
+                  padding: "8px 12px",
+                  borderRadius: "999px",
+                  fontWeight: 700,
+                  fontSize: "13px",
+                }}
+              >
+                {urgenciaStyles.label}
+              </span>
+            </div>
 
-          <div>
-            <strong>Que significa</strong>
-            <p style={{ marginTop: "8px", color: "#4b5563" }}>
-              {resultado.significado}
-            </p>
-          </div>
+            <div>
+              <strong>Qué es esta carta</strong>
+              <p style={{ marginTop: "8px", color: "#4b5563" }}>
+                {resultado.tipo}
+              </p>
+            </div>
 
-          <div>
-            <strong>Nivel de urgencia</strong>
-            <p style={{ marginTop: "8px", color: "#4b5563" }}>
-              {resultado.urgencia}
-            </p>
-          </div>
+            <div>
+              <strong>Qué significa</strong>
+              <p style={{ marginTop: "8px", color: "#4b5563" }}>
+                {resultado.significado}
+              </p>
+            </div>
 
-          <div>
-            <strong>Que podrias hacer</strong>
-            <ul style={{ marginTop: "8px", color: "#4b5563" }}>
-              {resultado.pasos.map((paso, index) => (
-                <li key={index}>{paso}</li>
-              ))}
-            </ul>
-          </div>
+            <div>
+              <strong>Nivel de urgencia</strong>
+              <p style={{ marginTop: "8px", color: "#4b5563" }}>
+                {resultado.urgencia}
+              </p>
+            </div>
 
-          <div
+            <div>
+              <strong>Qué podrías hacer</strong>
+              <ul style={{ marginTop: "8px", color: "#4b5563" }}>
+                {resultado.pasos.map((paso, index) => (
+                  <li key={index}>{paso}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div
+              style={{
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong style={{ color: "#1d4ed8" }}>Mensaje de calma</strong>
+              <p style={{ marginTop: "10px", color: "#1e3a8a" }}>
+                {resultado.calma}
+              </p>
+            </div>
+          </section>
+
+          <section
             style={{
-              background: "#eff6ff",
-              border: "1px solid #bfdbfe",
-              borderRadius: "14px",
-              padding: "18px",
+              background: isPro ? "#ecfdf5" : "#fff7ed",
+              border: isPro ? "1px solid #86efac" : "1px solid #fdba74",
+              borderRadius: "16px",
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
             }}
           >
-            <strong style={{ color: "#1d4ed8" }}>Mensaje de calma</strong>
-            <p style={{ marginTop: "10px", color: "#1e3a8a" }}>
-              {resultado.calma}
-            </p>
-          </div>
-        </section>
+            <div
+              style={{
+                fontSize: "13px",
+                fontWeight: 700,
+                color: isPro ? "#15803d" : "#c2410c",
+              }}
+            >
+              Después de este análisis
+            </div>
+
+            {isPro ? (
+              <>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "26px",
+                    color: "#166534",
+                  }}
+                >
+                  Tu acceso PRO te permite seguir analizando sin límite
+                </h3>
+
+                <p
+                  style={{
+                    margin: 0,
+                    lineHeight: 1.7,
+                    color: "#166534",
+                    maxWidth: "820px",
+                  }}
+                >
+                  Puedes revisar más cartas cuando lo necesites y mantener todo
+                  bajo control.
+                </p>
+
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                    background: "#ffffff",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: "999px",
+                    padding: "10px 14px",
+                    width: "fit-content",
+                    color: "#166534",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                  }}
+                >
+                  <span>Análisis sin límite</span>
+                  <span>•</span>
+                  <span>Más claridad</span>
+                  <span>•</span>
+                  <span>Más control</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "26px",
+                    color: "#111827",
+                  }}
+                >
+                  ¿Y si la próxima carta llega cuando ya no tengas análisis
+                  disponibles?
+                </h3>
+
+                <p
+                  style={{
+                    margin: 0,
+                    lineHeight: 1.7,
+                    color: "#7c2d12",
+                    maxWidth: "820px",
+                  }}
+                >
+                  SimpleUS PRO te ayuda a seguir entendiendo cartas importantes
+                  sin límite y con más claridad cuando más lo necesitas.
+                </p>
+
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "#7c2d12",
+                    lineHeight: 1.7,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                  }}
+                >
+                  <span>✔ Análisis ilimitados</span>
+                  <span>✔ Explicación clara paso a paso</span>
+                  <span>✔ Qué hacer exactamente y a dónde ir</span>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  <Link
+                    href="/pro"
+                    style={{
+                      display: "inline-block",
+                      background: "#1d4ed8",
+                      color: "#ffffff",
+                      padding: "12px 18px",
+                      borderRadius: "10px",
+                      textDecoration: "none",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Activar PRO ahora
+                  </Link>
+                </div>
+
+                <div
+                  style={{
+                    background: "#ffffff",
+                    border: "1px dashed #fdba74",
+                    borderRadius: "12px",
+                    padding: "12px",
+                    fontSize: "14px",
+                    color: "#7c2d12",
+                    maxWidth: "700px",
+                  }}
+                >
+                  ⚠ Una sola carta mal entendida puede costarte más que un mes
+                  de SimpleUS PRO.
+                </div>
+              </>
+            )}
+          </section>
+        </>
       )}
     </div>
   );

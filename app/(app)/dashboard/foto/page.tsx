@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -45,19 +46,34 @@ export default function FotoPage() {
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
+  const [plan, setPlan] = useState<"free" | "pro">("free");
 
   const freeLimit = 3;
-  const isBlocked = analysisCount >= freeLimit;
+  const isPro = plan === "pro";
+  const isBlocked = !isPro && analysisCount >= freeLimit;
 
-  async function cargarConteo() {
+  async function cargarConteoYPlan() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      setPlan("free");
       setAnalysisCount(0);
+      setLimitReached(false);
       return;
     }
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const nextPlan =
+      !profileError && profileData?.plan === "pro" ? "pro" : "free";
+
+    setPlan(nextPlan);
 
     const { count, error: countError } = await supabase
       .from("analyses")
@@ -71,11 +87,16 @@ export default function FotoPage() {
 
     const nextCount = count ?? 0;
     setAnalysisCount(nextCount);
-    setLimitReached(nextCount >= freeLimit);
+
+    if (nextPlan === "pro") {
+      setLimitReached(false);
+    } else {
+      setLimitReached(nextCount >= freeLimit);
+    }
   }
 
   useEffect(() => {
-    cargarConteo();
+    cargarConteoYPlan();
   }, []);
 
   async function convertirABase64(fileToConvert: File): Promise<string> {
@@ -111,12 +132,12 @@ export default function FotoPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        throw new Error("No se encontro una sesion activa.");
+        throw new Error("No se encontró una sesión activa.");
       }
 
       const imageBase64 = await convertirABase64(file);
 
-      const res = await fetch("/api/analyze-foto", {
+      const res = await fetch("/api/analyze-photo", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,11 +148,17 @@ export default function FotoPage() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = null;
 
-      if (data?.limitReached) {
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("El servidor devolvió una respuesta inválida.");
+      }
+
+      if (data?.limitReached && !isPro) {
         setLimitReached(true);
-        await cargarConteo();
+        await cargarConteoYPlan();
         return;
       }
 
@@ -140,12 +167,12 @@ export default function FotoPage() {
       }
 
       setResultado(data);
-      await cargarConteo();
+      await cargarConteoYPlan();
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : "Ocurrio un error al analizar la foto.";
+          : "Ocurrió un error al analizar la foto.";
 
       setError(message);
     } finally {
@@ -183,26 +210,40 @@ export default function FotoPage() {
             Analizar carta con foto
           </h1>
           <p style={{ color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
-            Sube una foto de la carta y SimpleUS intentara entenderla para
+            Sube una foto de la carta y SimpleUS intentará entenderla para
             generar un Mapa SimpleUS.
           </p>
         </div>
 
         <div
           style={{
-            background: isBlocked ? "#fff7ed" : "#f9fafb",
-            border: isBlocked ? "1px solid #fdba74" : "1px solid #e5e7eb",
+            background: isPro
+              ? "#ecfdf5"
+              : isBlocked
+              ? "#fff7ed"
+              : "#f9fafb",
+            border: isPro
+              ? "1px solid #86efac"
+              : isBlocked
+              ? "1px solid #fdba74"
+              : "1px solid #e5e7eb",
             borderRadius: "12px",
             padding: "14px 16px",
-            color: isBlocked ? "#9a3412" : "#374151",
+            color: isPro ? "#166534" : isBlocked ? "#9a3412" : "#374151",
             fontSize: "14px",
             fontWeight: 600,
           }}
         >
-          Plan gratuito: {analysisCount} de {freeLimit} analisis usados
+          {isPro ? (
+            <>Plan <strong>PRO activo</strong></>
+          ) : (
+            <>
+              Plan gratuito: {analysisCount} de {freeLimit} análisis usados
+            </>
+          )}
         </div>
 
-        {isBlocked && (
+        {isBlocked && !isPro && (
           <div
             style={{
               background: "#fff7ed",
@@ -213,7 +254,7 @@ export default function FotoPage() {
               lineHeight: 1.6,
             }}
           >
-            Ya alcanzaste el limite del plan gratuito. Para seguir analizando
+            Ya alcanzaste el límite del plan gratuito. Para seguir analizando
             cartas por foto, necesitaremos activar SimpleUS Pro.
           </div>
         )}
@@ -275,7 +316,7 @@ export default function FotoPage() {
             }}
           >
             {isBlocked
-              ? "Limite alcanzado"
+              ? "Límite alcanzado"
               : cargando
               ? "Analizando foto..."
               : "Analizar foto"}
@@ -287,7 +328,7 @@ export default function FotoPage() {
         </div>
       </section>
 
-      {limitReached && (
+      {limitReached && !isPro && (
         <section
           style={{
             background: "#ffffff",
@@ -299,30 +340,30 @@ export default function FotoPage() {
             gap: "20px",
           }}
         >
-          <h2 style={{ margin: 0 }}>Has llegado al limite del plan gratuito</h2>
+          <h2 style={{ margin: 0 }}>Has llegado al límite del plan gratuito</h2>
 
           <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
-            Ya utilizaste los <strong>3 analisis gratuitos</strong>. Puedes
+            Ya utilizaste los <strong>3 análisis gratuitos</strong>. Puedes
             actualizar a <strong>SimpleUS Pro</strong> para seguir analizando
-            cartas sin limite.
+            cartas sin límite.
           </p>
 
-          <button
-            type="button"
+          <Link
+            href="/pro"
             style={{
+              display: "inline-block",
               marginTop: "10px",
               background: "#1d4ed8",
               color: "white",
-              padding: "14px",
+              padding: "14px 18px",
               borderRadius: "10px",
-              border: "none",
+              textDecoration: "none",
               fontWeight: 700,
-              cursor: "pointer",
-              fontSize: "16px",
+              width: "fit-content",
             }}
           >
-            Proximamente disponible
-          </button>
+            Ver SimpleUS Pro
+          </Link>
         </section>
       )}
 
@@ -364,14 +405,14 @@ export default function FotoPage() {
           </div>
 
           <div>
-            <strong>Que es esta carta</strong>
+            <strong>Qué es esta carta</strong>
             <p style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.tipo}
             </p>
           </div>
 
           <div>
-            <strong>Que significa</strong>
+            <strong>Qué significa</strong>
             <p style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.significado}
             </p>
@@ -385,7 +426,7 @@ export default function FotoPage() {
           </div>
 
           <div>
-            <strong>Que podrias hacer</strong>
+            <strong>Qué podrías hacer</strong>
             <ul style={{ marginTop: "8px", color: "#4b5563" }}>
               {resultado.pasos.map((paso, index) => (
                 <li key={index}>{paso}</li>

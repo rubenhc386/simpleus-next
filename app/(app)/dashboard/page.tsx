@@ -365,17 +365,57 @@ export default function DashboardPage() {
                   ? "Redirigiendo..."
                   : "Desbloquear análisis ilimitados"}
               </button>
+            </div>
 
-              <span
-                style={{
-                  color: "#7c2d12",
-                  fontSize: "14px",
-                  lineHeight: 1.5,
-                }}
-              >
-                Evita errores por no entender una carta del gobierno, seguro o
-                banco.
-              </span>
+            <div
+              style={{
+                marginTop: "12px",
+                fontSize: "14px",
+                color: "#7c2d12",
+                lineHeight: 1.7,
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              <span>✔ Análisis ilimitados</span>
+              <span>✔ Explicación clara paso a paso</span>
+              <span>✔ Qué hacer exactamente y a dónde ir</span>
+            </div>
+
+            <span
+              style={{
+                fontSize: "13px",
+                color: "#9a3412",
+              }}
+            >
+              Ya hay usuarios evitando errores con SimpleUS PRO
+            </span>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px dashed #fdba74",
+                borderRadius: "12px",
+                padding: "12px",
+                fontSize: "14px",
+                color: "#7c2d12",
+                maxWidth: "600px",
+              }}
+            >
+              ⚠ Si te llega una carta urgente mañana y ya no tienes análisis
+              disponibles, no podrás entenderla a tiempo.
+            </div>
+
+            <div
+              style={{
+                color: "#7c2d12",
+                fontSize: "14px",
+                lineHeight: 1.5,
+              }}
+            >
+              Evita errores por no entender una carta del gobierno, seguro o
+              banco.
             </div>
 
             {mensajePago && (
@@ -528,7 +568,7 @@ export default function DashboardPage() {
           gap: "18px",
         }}
       >
-        <h2 style={{ fontSize: "26px", margin: 0 }}>Accesos rapidos</h2>
+        <h2 style={{ fontSize: "26px", margin: 0 }}>Accesos rápidos</h2>
 
         <div
           style={{

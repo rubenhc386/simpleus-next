@@ -1,129 +1,165 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function ProPage() {
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function irAPagar() {
+  async function handleCheckout() {
     try {
-      setCargando(true);
-      setError("");
+      setLoading(true);
 
-      const res = await fetch("/api/stripe/create-checkout-session", {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error || !session?.access_token) {
+        throw new Error("No hay sesión activa");
+      }
+
+      const res = await fetch("/api/checkout", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data?.error || "No se pudo iniciar el pago.");
-      }
-
-      if (!data?.url) {
-        throw new Error("Stripe no devolvio una URL de pago.");
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || "Error iniciando pago");
       }
 
       window.location.href = data.url;
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Ocurrio un error al abrir Stripe.";
-      setError(message);
-      setCargando(false);
+      console.error(err);
+      alert("Error al iniciar pago");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <div
       style={{
+        maxWidth: "900px",
+        margin: "0 auto",
+        padding: "40px 20px",
         display: "flex",
         flexDirection: "column",
         gap: "28px",
-        paddingTop: "40px",
-        paddingBottom: "40px",
-        maxWidth: "760px",
       }}
     >
+      {/* HEADLINE */}
       <section
         style={{
           background: "#ffffff",
           border: "1px solid #e5e7eb",
           borderRadius: "16px",
           padding: "28px",
+        }}
+      >
+        <h1 style={{ fontSize: "36px", margin: 0 }}>
+          Entiende cualquier carta en minutos
+        </h1>
+
+        <p style={{ fontSize: "18px", color: "#6b7280", marginTop: "12px" }}>
+          Evita multas, citas perdidas o problemas legales por no entender
+          documentos en inglés.
+        </p>
+      </section>
+
+      {/* BENEFICIOS */}
+      <section
+        style={{
+          background: "#f9fafb",
+          border: "1px solid #e5e7eb",
+          borderRadius: "16px",
+          padding: "24px",
+          lineHeight: 1.7,
           display: "flex",
           flexDirection: "column",
-          gap: "14px",
+          gap: "6px",
+          fontSize: "15px",
+        }}
+      >
+        <span>✔ Traducción clara al español</span>
+        <span>✔ Explicación simple (sin lenguaje complicado)</span>
+        <span>✔ Qué hacer paso a paso</span>
+        <span>✔ A dónde ir exactamente (DMV, IRS, etc)</span>
+      </section>
+
+      {/* PRECIO */}
+      <section
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "6px",
         }}
       >
         <div
           style={{
-            display: "inline-block",
-            fontSize: "13px",
-            color: "#1d4ed8",
+            fontSize: "32px",
             fontWeight: 700,
+            color: "#111827",
           }}
         >
-          SimpleUS Pro
+          $8.99 USD / mes
         </div>
 
-        <h1 style={{ fontSize: "34px", margin: 0 }}>
-          Actualiza tu cuenta a Pro
-        </h1>
-
-        <p style={{ color: "#4b5563", lineHeight: 1.7, margin: 0 }}>
-          Desbloquea analisis ilimitados y una experiencia mas completa dentro de
-          SimpleUS.
-        </p>
+        <div style={{ fontSize: "14px", color: "#6b7280" }}>
+          Menos de $0.30 al día para evitar errores importantes
+        </div>
       </section>
 
+      {/* CTA */}
       <section
         style={{
-          background: "#eff6ff",
-          border: "2px solid #1d4ed8",
-          borderRadius: "16px",
-          padding: "28px",
           display: "flex",
           flexDirection: "column",
-          gap: "16px",
+          gap: "10px",
         }}
       >
-        <strong style={{ fontSize: "24px", color: "#1d4ed8" }}>
-          SimpleUS Pro
-        </strong>
-
-        <p style={{ fontSize: "32px", fontWeight: 800, margin: 0 }}>
-          $8.99 / mes
-        </p>
-
-        <ul style={{ lineHeight: 1.9, margin: 0 }}>
-          <li>Analisis ilimitados</li>
-          <li>Subir fotos de cartas</li>
-          <li>Historial completo</li>
-          <li>Experiencia mas completa</li>
-        </ul>
-
         <button
-          type="button"
-          onClick={irAPagar}
-          disabled={cargando}
+          onClick={handleCheckout}
+          disabled={loading}
           style={{
-            background: cargando ? "#93c5fd" : "#1d4ed8",
-            color: "white",
-            padding: "14px 18px",
-            borderRadius: "10px",
+            background: loading ? "#93c5fd" : "#1d4ed8",
+            color: "#fff",
+            padding: "16px",
+            borderRadius: "12px",
             border: "none",
             fontWeight: 700,
-            cursor: cargando ? "not-allowed" : "pointer",
-            fontSize: "16px",
+            fontSize: "18px",
+            cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {cargando ? "Abriendo Stripe..." : "Actualizar a SimpleUS Pro"}
+          {loading ? "Procesando..." : "Activar PRO ahora"}
         </button>
 
-        {error && (
-          <div style={{ color: "#991b1b", lineHeight: 1.6 }}>{error}</div>
-        )}
+        {/* SOCIAL PROOF */}
+        <div style={{ fontSize: "13px", color: "#9ca3af" }}>
+          Usado por hispanos en Estados Unidos para entender cartas del
+          gobierno, bancos y seguros
+        </div>
+      </section>
+
+      {/* CONFIANZA */}
+      <section
+        style={{
+          fontSize: "14px",
+          color: "#6b7280",
+          lineHeight: 1.6,
+        }}
+      >
+        ✔ Cancela cuando quieras
+        <br />
+        ✔ Acceso inmediato
+        <br />
+        ✔ Sin contratos
       </section>
     </div>
   );
