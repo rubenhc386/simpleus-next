@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -19,6 +19,14 @@ export default function DashboardPage() {
   const [plan, setPlan] = useState<"free" | "pro">("free");
   const [cargandoPago, setCargandoPago] = useState(false);
   const [mensajePago, setMensajePago] = useState("");
+
+  const freeLimit = 3;
+
+  const progressPercent = useMemo(() => {
+    if (plan === "pro") return 100;
+    const used = Math.min(count, freeLimit);
+    return Math.round((used / freeLimit) * 100);
+  }, [count, plan]);
 
   useEffect(() => {
     let active = true;
@@ -200,6 +208,193 @@ export default function DashboardPage() {
 
       <section
         style={{
+          background: plan === "pro" ? "#ecfdf5" : "#fff7ed",
+          border: plan === "pro" ? "1px solid #86efac" : "1px solid #fdba74",
+          borderRadius: "16px",
+          padding: "24px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "13px",
+            fontWeight: 700,
+            color: plan === "pro" ? "#15803d" : "#c2410c",
+          }}
+        >
+          Tu siguiente paso
+        </div>
+
+        {plan === "pro" ? (
+          <>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "28px",
+                color: "#166534",
+              }}
+            >
+              Tu acceso PRO está activo
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                lineHeight: 1.7,
+                color: "#166534",
+                maxWidth: "820px",
+              }}
+            >
+              Puedes analizar todas tus cartas sin límite y tomar decisiones con
+              claridad.
+            </p>
+
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                flexWrap: "wrap",
+                background: "#ffffff",
+                border: "1px solid #bbf7d0",
+                borderRadius: "999px",
+                padding: "10px 14px",
+                width: "fit-content",
+                color: "#166534",
+                fontWeight: 700,
+                fontSize: "14px",
+              }}
+            >
+              <span>Sin límites</span>
+              <span>•</span>
+              <span>Más claridad</span>
+              <span>•</span>
+              <span>Más control</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "28px",
+                color: "#111827",
+              }}
+            >
+              Te estás quedando sin análisis gratuitos
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                lineHeight: 1.7,
+                color: "#7c2d12",
+                maxWidth: "820px",
+              }}
+            >
+              Ya usaste {Math.min(count, freeLimit)} de {freeLimit} análisis
+              disponibles. Evita quedarte sin poder entender una carta
+              importante a tiempo.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                maxWidth: "520px",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  height: "12px",
+                  background: "#fed7aa",
+                  borderRadius: "999px",
+                  overflow: "hidden",
+                  border: "1px solid #fdba74",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${progressPercent}%`,
+                    height: "100%",
+                    background: "#ea580c",
+                    borderRadius: "999px",
+                    transition: "width 0.3s ease",
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  color: "#9a3412",
+                }}
+              >
+                {Math.min(count, freeLimit)} / {freeLimit} análisis usados
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <button
+                type="button"
+                onClick={activarPro}
+                disabled={cargandoPago}
+                style={{
+                  background: cargandoPago ? "#93c5fd" : "#1d4ed8",
+                  color: "#ffffff",
+                  padding: "12px 18px",
+                  borderRadius: "10px",
+                  border: "none",
+                  fontWeight: 700,
+                  cursor: cargandoPago ? "not-allowed" : "pointer",
+                }}
+              >
+                {cargandoPago
+                  ? "Redirigiendo..."
+                  : "Desbloquear análisis ilimitados"}
+              </button>
+
+              <span
+                style={{
+                  color: "#7c2d12",
+                  fontSize: "14px",
+                  lineHeight: 1.5,
+                }}
+              >
+                Evita errores por no entender una carta del gobierno, seguro o
+                banco.
+              </span>
+            </div>
+
+            {mensajePago && (
+              <div
+                style={{
+                  color: "#b91c1c",
+                  fontSize: "14px",
+                  lineHeight: 1.5,
+                }}
+              >
+                {mensajePago}
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <section
+        style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           gap: "16px",
@@ -285,7 +480,7 @@ export default function DashboardPage() {
                 marginBottom: "12px",
               }}
             >
-              Desbloquea mas analisis y una experiencia mas completa.
+              Desbloquea más análisis y una experiencia más completa.
             </p>
 
             <button
@@ -398,7 +593,7 @@ export default function DashboardPage() {
           >
             <strong>Analizar PDF</strong>
             <span style={{ color: "#6b7280", lineHeight: 1.6 }}>
-              Sube un PDF con texto. Esta funcion sigue en evolucion.
+              Sube un PDF con texto. Esta función sigue en evolución.
             </span>
           </Link>
 
@@ -418,7 +613,7 @@ export default function DashboardPage() {
           >
             <strong>Ver historial</strong>
             <span style={{ color: "#6b7280", lineHeight: 1.6 }}>
-              Revisa tus analisis anteriores desde una sola pantalla.
+              Revisa tus análisis anteriores desde una sola pantalla.
             </span>
           </Link>
         </div>
@@ -444,7 +639,7 @@ export default function DashboardPage() {
             alignItems: "center",
           }}
         >
-          <h2 style={{ fontSize: "26px", margin: 0 }}>Ultimos analisis</h2>
+          <h2 style={{ fontSize: "26px", margin: 0 }}>Últimos análisis</h2>
 
           <Link
             href="/dashboard/historial"
@@ -462,7 +657,7 @@ export default function DashboardPage() {
           <p style={{ color: "#6b7280", margin: 0 }}>Cargando historial...</p>
         ) : ultimos.length === 0 ? (
           <p style={{ color: "#6b7280", margin: 0 }}>
-            Aun no tienes analisis guardados.
+            Aún no tienes análisis guardados.
           </p>
         ) : (
           <div
@@ -485,7 +680,7 @@ export default function DashboardPage() {
                   gap: "8px",
                 }}
               >
-                <strong>{item.tipo || "Analisis sin titulo"}</strong>
+                <strong>{item.tipo || "Análisis sin título"}</strong>
                 <span style={{ color: "#6b7280", fontSize: "14px" }}>
                   {new Date(item.created_at).toLocaleString()}
                 </span>
