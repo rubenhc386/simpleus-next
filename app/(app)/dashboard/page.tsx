@@ -40,6 +40,9 @@ export default function DashboardPage() {
   const [userEmail, setUserEmail] = useState("");
   const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
+  const [affiliateLeads, setAffiliateLeads] = useState(0);
+  const [affiliatePaid, setAffiliatePaid] = useState(0);
+
   const freeLimit = 3;
   const isPro = plan === "pro";
   const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
@@ -103,6 +106,8 @@ export default function DashboardPage() {
             setBonusAnalyses(0);
             setUserEmail("");
             setTrialStartedAt(null);
+            setAffiliateLeads(0);
+            setAffiliatePaid(0);
             setLoading(false);
           }
           return;
@@ -131,7 +136,7 @@ export default function DashboardPage() {
         setIsAffiliate(affiliateFlag);
 
         let code = profileData?.referral_code;
-        let affCode = profileData?.affiliate_code || "";
+        const affCode = profileData?.affiliate_code || "";
 
         if (!code) {
           code = Math.random().toString(36).substring(2, 8);
@@ -151,6 +156,35 @@ export default function DashboardPage() {
         setReferralsCount(profileData?.referrals_count || 0);
         setBonusAnalyses(profileData?.bonus_analyses || 0);
         setTrialStartedAt(profileData?.trial_started_at || null);
+
+        if (affiliateFlag) {
+          const { count: leadsCount, error: leadsError } = await supabase
+            .from("affiliate_conversions")
+            .select("*", { count: "exact", head: true })
+            .eq("affiliate_id", user.id)
+            .eq("status", "lead");
+
+          if (leadsError) {
+            console.error("Error contando leads afiliados:", leadsError);
+          } else {
+            setAffiliateLeads(leadsCount || 0);
+          }
+
+          const { count: paidCount, error: paidError } = await supabase
+            .from("affiliate_conversions")
+            .select("*", { count: "exact", head: true })
+            .eq("affiliate_id", user.id)
+            .eq("status", "paid");
+
+          if (paidError) {
+            console.error("Error contando paid afiliados:", paidError);
+          } else {
+            setAffiliatePaid(paidCount || 0);
+          }
+        } else {
+          setAffiliateLeads(0);
+          setAffiliatePaid(0);
+        }
 
         const { data, error } = await supabase
           .from("analyses")
@@ -186,6 +220,8 @@ export default function DashboardPage() {
           setBonusAnalyses(0);
           setUserEmail("");
           setTrialStartedAt(null);
+          setAffiliateLeads(0);
+          setAffiliatePaid(0);
         }
       } finally {
         if (active) {
@@ -328,6 +364,88 @@ export default function DashboardPage() {
         )}
       </section>
 
+      {isAffiliate && (
+        <section
+          style={{
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: "16px",
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#1d4ed8",
+            }}
+          >
+            Programa de afiliados
+          </div>
+
+          <h2 style={{ margin: 0, fontSize: "28px", color: "#111827" }}>
+            Tu panel rápido de afiliado
+          </h2>
+
+          <p style={{ margin: 0, color: "#1e3a8a", lineHeight: 1.7 }}>
+            Comparte tu enlace, registra leads y convierte usuarios PRO.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Tu código</strong>
+              <p style={{ margin: "10px 0 0 0", color: "#374151" }}>
+                {affiliateCode || "Sin código"}
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Leads</strong>
+              <p style={{ margin: "10px 0 0 0", color: "#374151" }}>
+                {affiliateLeads}
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Usuarios PRO</strong>
+              <p style={{ margin: "10px 0 0 0", color: "#374151" }}>
+                {affiliatePaid}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section
         style={{
           background: plan === "pro" ? "#ecfdf5" : "#fff7ed",
@@ -351,13 +469,7 @@ export default function DashboardPage() {
 
         {plan === "pro" ? (
           <>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: "28px",
-                color: "#166534",
-              }}
-            >
+            <h2 style={{ margin: 0, fontSize: "28px", color: "#166534" }}>
               Tu acceso PRO está activo
             </h2>
 
@@ -372,39 +484,10 @@ export default function DashboardPage() {
               Puedes analizar todas tus cartas sin límite y tomar decisiones con
               claridad.
             </p>
-
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                flexWrap: "wrap",
-                background: "#ffffff",
-                border: "1px solid #bbf7d0",
-                borderRadius: "999px",
-                padding: "10px 14px",
-                width: "fit-content",
-                color: "#166534",
-                fontWeight: 700,
-                fontSize: "14px",
-              }}
-            >
-              <span>Sin límites</span>
-              <span>•</span>
-              <span>Más claridad</span>
-              <span>•</span>
-              <span>Más control</span>
-            </div>
           </>
         ) : (
           <>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: "28px",
-                color: "#111827",
-              }}
-            >
+            <h2 style={{ margin: 0, fontSize: "28px", color: "#111827" }}>
               {isTrialActive
                 ? "Tu prueba gratuita está corriendo"
                 : "Tu prueba gratuita terminó"}
@@ -515,46 +598,6 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div
-              style={{
-                marginTop: "12px",
-                fontSize: "14px",
-                color: "#7c2d12",
-                lineHeight: 1.7,
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-            >
-              <span>✔ Análisis ilimitados</span>
-              <span>✔ Explicación clara paso a paso</span>
-              <span>✔ Qué hacer exactamente y a dónde ir</span>
-            </div>
-
-            <span
-              style={{
-                fontSize: "13px",
-                color: "#9a3412",
-              }}
-            >
-              Ya hay usuarios evitando errores con SimpleUS PRO
-            </span>
-
-            <div
-              style={{
-                background: "#ffffff",
-                border: "1px dashed #fdba74",
-                borderRadius: "12px",
-                padding: "12px",
-                fontSize: "14px",
-                color: "#7c2d12",
-                maxWidth: "600px",
-              }}
-            >
-              ⚠ Si te llega una carta urgente mañana y ya no tienes análisis
-              disponibles, no podrás entenderla a tiempo.
-            </div>
-
             {mensajePago && (
               <div
                 style={{
@@ -568,175 +611,6 @@ export default function DashboardPage() {
             )}
           </>
         )}
-      </section>
-
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "16px",
-        }}
-      >
-        <div
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "16px",
-            padding: "22px",
-          }}
-        >
-          <strong style={{ fontSize: "18px" }}>Plan actual</strong>
-          <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "10px" }}>
-            {plan === "pro" ? "PRO" : "Gratis"}
-          </p>
-          <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
-            {plan === "pro"
-              ? "Tu acceso PRO ya está activo."
-              : isTrialActive
-              ? "Tu prueba gratuita sigue activa."
-              : "Tu prueba terminó. Solo te quedan los análisis ganados por referidos."}
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "16px",
-            padding: "22px",
-          }}
-        >
-          <strong style={{ fontSize: "18px" }}>Análisis guardados</strong>
-          <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "10px" }}>
-            {loading ? "Cargando..." : count + " análisis"}
-          </p>
-          <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
-            Conteo basado en tu historial guardado dentro de tu cuenta.
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "16px",
-            padding: "22px",
-          }}
-        >
-          <strong style={{ fontSize: "18px" }}>
-            {isAffiliate ? "Cuenta afiliada" : "Bonos por referidos"}
-          </strong>
-          <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "10px" }}>
-            {isAffiliate ? "Afiliado activo" : `${bonusAnalyses} análisis extra`}
-          </p>
-          <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
-            {isAffiliate
-              ? "Tu cuenta ya puede compartir enlace de afiliado."
-              : "Beneficios acumulados por invitar nuevos usuarios."}
-          </p>
-        </div>
-      </section>
-
-      <section
-        style={{
-          background: "#ffffff",
-          border: "1px solid #e5e7eb",
-          borderRadius: "16px",
-          padding: "28px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "18px",
-        }}
-      >
-        <h2 style={{ fontSize: "26px", margin: 0 }}>Accesos rápidos</h2>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <Link
-            href="/dashboard/analizar"
-            style={{
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
-              borderRadius: "14px",
-              padding: "20px",
-              textDecoration: "none",
-              color: "#111827",
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-            }}
-          >
-            <strong>Analizar texto</strong>
-            <span style={{ color: "#6b7280", lineHeight: 1.6 }}>
-              Pega el contenido de una carta y recibe tu Mapa SimpleUS.
-            </span>
-          </Link>
-
-          <Link
-            href="/dashboard/foto"
-            style={{
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
-              borderRadius: "14px",
-              padding: "20px",
-              textDecoration: "none",
-              color: "#111827",
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-            }}
-          >
-            <strong>Analizar foto</strong>
-            <span style={{ color: "#6b7280", lineHeight: 1.6 }}>
-              Sube una imagen de la carta y deja que SimpleUS la interprete.
-            </span>
-          </Link>
-
-          <Link
-            href="/dashboard/pdf"
-            style={{
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
-              borderRadius: "14px",
-              padding: "20px",
-              textDecoration: "none",
-              color: "#111827",
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-            }}
-          >
-            <strong>Analizar PDF</strong>
-            <span style={{ color: "#6b7280", lineHeight: 1.6 }}>
-              Sube un PDF con texto. Esta función sigue en evolución.
-            </span>
-          </Link>
-
-          <Link
-            href="/dashboard/historial"
-            style={{
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
-              borderRadius: "14px",
-              padding: "20px",
-              textDecoration: "none",
-              color: "#111827",
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-            }}
-          >
-            <strong>Ver historial</strong>
-            <span style={{ color: "#6b7280", lineHeight: 1.6 }}>
-              Revisa tus análisis anteriores desde una sola pantalla.
-            </span>
-          </Link>
-        </div>
       </section>
 
       <section
@@ -821,14 +695,16 @@ export default function DashboardPage() {
               {copiado ? "¡Copiado!" : "Copiar enlace"}
             </button>
 
-            <span
-              style={{
-                fontSize: "14px",
-                color: "#6b7280",
-              }}
-            >
-              Referidos registrados: <strong>{referralsCount}</strong>
-            </span>
+            {!isAffiliate && (
+              <span
+                style={{
+                  fontSize: "14px",
+                  color: "#6b7280",
+                }}
+              >
+                Referidos registrados: <strong>{referralsCount}</strong>
+              </span>
+            )}
           </div>
 
           {!isAffiliate && (

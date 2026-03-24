@@ -35,14 +35,24 @@ export async function POST(req: Request) {
           ? session.metadata.userEmail
           : session.customer_details?.email || null;
 
+      const stripeCustomerId =
+        typeof session.customer === "string" ? session.customer : null;
+
+      const stripeSubscriptionId =
+        typeof session.subscription === "string" ? session.subscription : null;
+
       if (userId) {
         const { error: planError } = await supabaseAdmin
           .from("profiles")
-          .update({ plan: "pro" })
+          .update({
+            plan: "pro",
+            stripe_customer_id: stripeCustomerId,
+            stripe_subscription_id: stripeSubscriptionId,
+          })
           .eq("id", userId);
 
         if (planError) {
-          console.error("Error actualizando plan a pro:", planError);
+          console.error("Error actualizando profile a pro:", planError);
         }
 
         const { error: conversionError } = await supabaseAdmin
