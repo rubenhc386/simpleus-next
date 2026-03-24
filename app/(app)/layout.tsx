@@ -73,8 +73,12 @@ export default function PrivateAppLayout({
             generarCodigo() + Math.floor(Math.random() * 10).toString();
         }
 
+const { data: authUserData } = await supabase.auth.getUser();
+const authEmail = authUserData?.user?.email || null;
+
 const { error: insertError } = await supabase.from("profiles").insert({
   id: userId,
+  email: authEmail,
   plan: "free",
   referral_code: nuevoCodigo,
   referred_by: referredById,

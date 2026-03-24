@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [cargandoPago, setCargandoPago] = useState(false);
   const [mensajePago, setMensajePago] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [affiliateCode, setAffiliateCode] = useState("");
+  const [isAffiliate, setIsAffiliate] = useState(false);
   const [referralsCount, setReferralsCount] = useState(0);
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
   const [copiado, setCopiado] = useState(false);
@@ -56,8 +58,12 @@ export default function DashboardPage() {
     return Math.round((used / total) * 100);
   }, [count, plan, realFreeLimit]);
 
-  const referralLink = referralCode
-    ? `https://www.simpleus.app?r=${referralCode}`
+  const referralLink = isAffiliate
+    ? affiliateCode
+      ? `https://www.simpleus.app/?a=${affiliateCode}`
+      : ""
+    : referralCode
+    ? `https://www.simpleus.app/?r=${referralCode}`
     : "";
 
   const nextReferralGoal =
@@ -91,6 +97,8 @@ export default function DashboardPage() {
             setCount(0);
             setUltimos([]);
             setReferralCode("");
+            setAffiliateCode("");
+            setIsAffiliate(false);
             setReferralsCount(0);
             setBonusAnalyses(0);
             setUserEmail("");
@@ -106,7 +114,7 @@ export default function DashboardPage() {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select(
-            "plan, referral_code, referrals_count, bonus_analyses, trial_started_at"
+            "plan, referral_code, affiliate_code, is_affiliate, referrals_count, bonus_analyses, trial_started_at"
           )
           .eq("id", user.id)
           .single();
@@ -119,7 +127,11 @@ export default function DashboardPage() {
           setPlan("free");
         }
 
+        const affiliateFlag = profileData?.is_affiliate === true;
+        setIsAffiliate(affiliateFlag);
+
         let code = profileData?.referral_code;
+        let affCode = profileData?.affiliate_code || "";
 
         if (!code) {
           code = Math.random().toString(36).substring(2, 8);
@@ -135,6 +147,7 @@ export default function DashboardPage() {
         }
 
         setReferralCode(code || "");
+        setAffiliateCode(affCode);
         setReferralsCount(profileData?.referrals_count || 0);
         setBonusAnalyses(profileData?.bonus_analyses || 0);
         setTrialStartedAt(profileData?.trial_started_at || null);
@@ -167,6 +180,8 @@ export default function DashboardPage() {
           setCount(0);
           setUltimos([]);
           setReferralCode("");
+          setAffiliateCode("");
+          setIsAffiliate(false);
           setReferralsCount(0);
           setBonusAnalyses(0);
           setUserEmail("");
@@ -608,12 +623,16 @@ export default function DashboardPage() {
             padding: "22px",
           }}
         >
-          <strong style={{ fontSize: "18px" }}>Bonos por referidos</strong>
+          <strong style={{ fontSize: "18px" }}>
+            {isAffiliate ? "Cuenta afiliada" : "Bonos por referidos"}
+          </strong>
           <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "10px" }}>
-            {bonusAnalyses} análisis extra
+            {isAffiliate ? "Afiliado activo" : `${bonusAnalyses} análisis extra`}
           </p>
           <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
-            Beneficios acumulados por invitar nuevos usuarios.
+            {isAffiliate
+              ? "Tu cuenta ya puede compartir enlace de afiliado."
+              : "Beneficios acumulados por invitar nuevos usuarios."}
           </p>
         </div>
       </section>
@@ -731,11 +750,14 @@ export default function DashboardPage() {
           gap: "18px",
         }}
       >
-        <h2 style={{ fontSize: "26px", margin: 0 }}>Invita y gana</h2>
+        <h2 style={{ fontSize: "26px", margin: 0 }}>
+          {isAffiliate ? "Programa de afiliados" : "Invita y gana"}
+        </h2>
 
         <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
-          Comparte tu enlace personal con amigos o familiares. Mientras más
-          personas entren con tu invitación, más recompensas podrás desbloquear.
+          {isAffiliate
+            ? "Comparte tu enlace de afiliado en redes sociales y usa tu cuenta PRO para mostrar cómo funciona SimpleUS."
+            : "Comparte tu enlace personal con amigos o familiares. Mientras más personas entren con tu invitación, más recompensas podrás desbloquear."}
         </p>
 
         <div
@@ -756,7 +778,7 @@ export default function DashboardPage() {
               fontWeight: 700,
             }}
           >
-            Tu enlace de referido
+            {isAffiliate ? "Tu enlace de afiliado" : "Tu enlace de referido"}
           </div>
 
           <input
@@ -809,57 +831,61 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div
-            style={{
-              background: "#ffffff",
-              border: "1px dashed #d1d5db",
-              borderRadius: "12px",
-              padding: "14px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-              color: "#374151",
-              fontSize: "14px",
-            }}
-          >
-            <strong>Recompensas actuales</strong>
-            <span>1 referido = +1 análisis extra</span>
-            <span>3 referidos = +3 análisis extra</span>
-            <span>5 referidos = +7 análisis extra</span>
-            <span>10 referidos = 1 mes PRO gratis</span>
-          </div>
+          {!isAffiliate && (
+            <>
+              <div
+                style={{
+                  background: "#ffffff",
+                  border: "1px dashed #d1d5db",
+                  borderRadius: "12px",
+                  padding: "14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  color: "#374151",
+                  fontSize: "14px",
+                }}
+              >
+                <strong>Recompensas actuales</strong>
+                <span>1 referido = +1 análisis extra</span>
+                <span>3 referidos = +3 análisis extra</span>
+                <span>5 referidos = +7 análisis extra</span>
+                <span>10 referidos = 1 mes PRO gratis</span>
+              </div>
 
-          {nextReferralGoal !== null ? (
-            <div
-              style={{
-                background: "#eff6ff",
-                border: "1px solid #bfdbfe",
-                borderRadius: "12px",
-                padding: "14px",
-                color: "#1e3a8a",
-                fontSize: "14px",
-                lineHeight: 1.6,
-              }}
-            >
-              Te faltan <strong>{referralsRemaining}</strong> referido
-              {referralsRemaining === 1 ? "" : "s"} para alcanzar tu siguiente
-              meta de <strong>{nextReferralGoal}</strong>.
-            </div>
-          ) : (
-            <div
-              style={{
-                background: "#ecfdf5",
-                border: "1px solid #86efac",
-                borderRadius: "12px",
-                padding: "14px",
-                color: "#166534",
-                fontSize: "14px",
-                lineHeight: 1.6,
-              }}
-            >
-              Ya alcanzaste el nivel máximo visible de recompensas. El siguiente
-              paso es pasar esto a afiliados y comisiones.
-            </div>
+              {nextReferralGoal !== null ? (
+                <div
+                  style={{
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: "12px",
+                    padding: "14px",
+                    color: "#1e3a8a",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Te faltan <strong>{referralsRemaining}</strong> referido
+                  {referralsRemaining === 1 ? "" : "s"} para alcanzar tu siguiente
+                  meta de <strong>{nextReferralGoal}</strong>.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    background: "#ecfdf5",
+                    border: "1px solid #86efac",
+                    borderRadius: "12px",
+                    padding: "14px",
+                    color: "#166534",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Ya alcanzaste el nivel máximo visible de recompensas. El siguiente
+                  paso es pasar esto a afiliados y comisiones.
+                </div>
+              )}
+            </>
           )}
 
           <div
@@ -869,8 +895,9 @@ export default function DashboardPage() {
               lineHeight: 1.6,
             }}
           >
-            Tu invitación ayudará a otras personas a entender cartas importantes
-            en inglés con más claridad.
+            {isAffiliate
+              ? "Tu enlace está listo para usarse en TikTok, Instagram, WhatsApp, YouTube o cualquier red social."
+              : "Tu invitación ayudará a otras personas a entender cartas importantes en inglés con más claridad."}
           </div>
         </div>
       </section>

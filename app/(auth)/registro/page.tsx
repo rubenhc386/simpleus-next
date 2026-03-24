@@ -155,6 +155,7 @@ export default function RegistroPage() {
 
 const { error: profileError } = await supabase.from("profiles").upsert({
   id: userId,
+  email: data.user?.email || email || null,
   plan: "free",
   referral_code: nuevoCodigo,
   referred_by: referredById,
