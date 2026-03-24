@@ -131,7 +131,11 @@ export default function RegistroPage() {
           .eq("referral_code", referralCode)
           .maybeSingle();
 
-        if (!referralError && referralOwner?.id && referralOwner.id !== userId) {
+        if (
+          !referralError &&
+          referralOwner?.id &&
+          referralOwner.id !== userId
+        ) {
           referredById = referralOwner.id;
         }
       }
@@ -145,7 +149,8 @@ export default function RegistroPage() {
         .maybeSingle();
 
       if (codigoExistente?.id) {
-        nuevoCodigo = generarCodigo() + Math.floor(Math.random() * 10).toString();
+        nuevoCodigo =
+          generarCodigo() + Math.floor(Math.random() * 10).toString();
       }
 
       const { error: profileError } = await supabase.from("profiles").upsert({
@@ -158,6 +163,22 @@ export default function RegistroPage() {
       if (profileError) {
         setMensaje("La cuenta se creó, pero no se pudo completar el perfil.");
         return;
+      }
+
+      if (referredById) {
+        const { error: referralIncrementError } = await supabase.rpc(
+          "increment_referrals",
+          {
+            user_id_input: referredById,
+          }
+        );
+
+        if (referralIncrementError) {
+          console.error(
+            "No se pudo incrementar referrals_count:",
+            referralIncrementError
+          );
+        }
       }
 
       setRegistroExitoso(true);
