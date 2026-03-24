@@ -21,19 +21,36 @@ export default function DashboardPage() {
   const [mensajePago, setMensajePago] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [referralsCount, setReferralsCount] = useState(0);
+  const [bonusAnalyses, setBonusAnalyses] = useState(0);
   const [copiado, setCopiado] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   const freeLimit = 3;
+  const realFreeLimit = freeLimit + bonusAnalyses;
 
   const progressPercent = useMemo(() => {
     if (plan === "pro") return 100;
-    const used = Math.min(count, freeLimit);
-    return Math.round((used / freeLimit) * 100);
-  }, [count, plan]);
+    const used = Math.min(count, realFreeLimit || 1);
+    return Math.round((used / (realFreeLimit || 1)) * 100);
+  }, [count, plan, realFreeLimit]);
 
   const referralLink = referralCode
     ? `https://www.simpleus.app?r=${referralCode}`
     : "";
+
+  const nextReferralGoal =
+    referralsCount < 1
+      ? 1
+      : referralsCount < 3
+      ? 3
+      : referralsCount < 5
+      ? 5
+      : referralsCount < 10
+      ? 10
+      : null;
+
+  const referralsRemaining =
+    nextReferralGoal !== null ? Math.max(nextReferralGoal - referralsCount, 0) : 0;
 
   useEffect(() => {
     let active = true;
@@ -53,16 +70,19 @@ export default function DashboardPage() {
             setUltimos([]);
             setReferralCode("");
             setReferralsCount(0);
+            setBonusAnalyses(0);
+            setUserEmail("");
             setLoading(false);
           }
           return;
         }
 
         const user = session.user;
+        setUserEmail(user.email || "");
 
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("plan, referral_code, referrals_count")
+          .select("plan, referral_code, referrals_count, bonus_analyses")
           .eq("id", user.id)
           .single();
 
@@ -76,23 +96,22 @@ export default function DashboardPage() {
 
         let code = profileData?.referral_code;
 
-if (!code) {
-  // generar código
-  code = Math.random().toString(36).substring(2, 8);
+        if (!code) {
+          code = Math.random().toString(36).substring(2, 8);
 
-  // guardar en Supabase
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({ referral_code: code })
-    .eq("id", user.id);
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({ referral_code: code })
+            .eq("id", user.id);
 
-  if (updateError) {
-    console.error("Error generando referral_code:", updateError);
-  }
-}
+          if (updateError) {
+            console.error("Error generando referral_code:", updateError);
+          }
+        }
 
-setReferralCode(code || "");
-setReferralsCount(profileData?.referrals_count || 0);
+        setReferralCode(code || "");
+        setReferralsCount(profileData?.referrals_count || 0);
+        setBonusAnalyses(profileData?.bonus_analyses || 0);
 
         const { data, error } = await supabase
           .from("analyses")
@@ -123,6 +142,8 @@ setReferralsCount(profileData?.referrals_count || 0);
           setUltimos([]);
           setReferralCode("");
           setReferralsCount(0);
+          setBonusAnalyses(0);
+          setUserEmail("");
         }
       } finally {
         if (active) {
@@ -246,6 +267,23 @@ setReferralsCount(profileData?.referrals_count || 0);
           Desde aquí puedes analizar cartas, revisar tu historial y seguir
           organizando tus documentos importantes en inglés.
         </p>
+
+        {userEmail && (
+          <div
+            style={{
+              marginTop: "8px",
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "12px",
+              padding: "12px 14px",
+              width: "fit-content",
+              fontSize: "14px",
+              color: "#374151",
+            }}
+          >
+            Sesión actual: <strong>{userEmail}</strong>
+          </div>
+        )}
       </section>
 
       <section
@@ -336,10 +374,22 @@ setReferralsCount(profileData?.referrals_count || 0);
                 maxWidth: "820px",
               }}
             >
-              Ya usaste {Math.min(count, freeLimit)} de {freeLimit} análisis
+              Ya usaste {Math.min(count, realFreeLimit)} de {realFreeLimit} análisis
               disponibles. Evita quedarte sin poder entender una carta
               importante a tiempo.
             </p>
+
+            {bonusAnalyses > 0 && (
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#1d4ed8",
+                  fontWeight: 700,
+                }}
+              >
+                Tienes +{bonusAnalyses} análisis extra ganados por referidos.
+              </div>
+            )}
 
             <div
               style={{
@@ -377,7 +427,7 @@ setReferralsCount(profileData?.referrals_count || 0);
                   color: "#9a3412",
                 }}
               >
-                {Math.min(count, freeLimit)} / {freeLimit} análisis usados
+                {Math.min(count, realFreeLimit)} / {realFreeLimit} análisis usados
               </div>
             </div>
 
@@ -518,85 +568,22 @@ setReferralsCount(profileData?.referrals_count || 0);
           </p>
         </div>
 
-        {plan === "pro" ? (
-          <div
-            style={{
-              background: "#ecfdf5",
-              border: "1px solid #86efac",
-              borderRadius: "16px",
-              padding: "22px",
-            }}
-          >
-            <strong style={{ fontSize: "18px", color: "#166534" }}>
-              SimpleUS Pro activo
-            </strong>
-            <p
-              style={{
-                color: "#166534",
-                lineHeight: 1.7,
-                marginTop: "10px",
-                marginBottom: 0,
-              }}
-            >
-              Ya tienes acceso PRO activo. Disfruta una experiencia más completa
-              dentro de SimpleUS.
-            </p>
-          </div>
-        ) : (
-          <div
-            style={{
-              background: "#eff6ff",
-              border: "1px solid #bfdbfe",
-              borderRadius: "16px",
-              padding: "22px",
-            }}
-          >
-            <strong style={{ fontSize: "18px", color: "#1d4ed8" }}>
-              SimpleUS Pro
-            </strong>
-            <p
-              style={{
-                color: "#1e3a8a",
-                lineHeight: 1.7,
-                marginTop: "10px",
-                marginBottom: "12px",
-              }}
-            >
-              Desbloquea más análisis y una experiencia más completa.
-            </p>
-
-            <button
-              type="button"
-              onClick={activarPro}
-              disabled={cargandoPago}
-              style={{
-                display: "inline-block",
-                background: cargandoPago ? "#93c5fd" : "#1d4ed8",
-                color: "#ffffff",
-                padding: "10px 14px",
-                borderRadius: "10px",
-                border: "none",
-                fontWeight: 700,
-                cursor: cargandoPago ? "not-allowed" : "pointer",
-              }}
-            >
-              {cargandoPago ? "Redirigiendo..." : "Activar PRO"}
-            </button>
-
-            {mensajePago && (
-              <div
-                style={{
-                  marginTop: "10px",
-                  color: "#b91c1c",
-                  fontSize: "14px",
-                  lineHeight: 1.5,
-                }}
-              >
-                {mensajePago}
-              </div>
-            )}
-          </div>
-        )}
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "22px",
+          }}
+        >
+          <strong style={{ fontSize: "18px" }}>Bonos por referidos</strong>
+          <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "10px" }}>
+            {bonusAnalyses} análisis extra
+          </p>
+          <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
+            Beneficios acumulados por invitar nuevos usuarios.
+          </p>
+        </div>
       </section>
 
       <section
@@ -715,8 +702,8 @@ setReferralsCount(profileData?.referrals_count || 0);
         <h2 style={{ fontSize: "26px", margin: 0 }}>Invita y gana</h2>
 
         <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
-          Comparte tu enlace personal con amigos o familiares. Más adelante
-          activaremos recompensas por cada persona que llegue con tu invitación.
+          Comparte tu enlace personal con amigos o familiares. Mientras más
+          personas entren con tu invitación, más recompensas podrás desbloquear.
         </p>
 
         <div
@@ -789,6 +776,59 @@ setReferralsCount(profileData?.referrals_count || 0);
               Referidos registrados: <strong>{referralsCount}</strong>
             </span>
           </div>
+
+          <div
+            style={{
+              background: "#ffffff",
+              border: "1px dashed #d1d5db",
+              borderRadius: "12px",
+              padding: "14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              color: "#374151",
+              fontSize: "14px",
+            }}
+          >
+            <strong>Recompensas actuales</strong>
+            <span>1 referido = +1 análisis extra</span>
+            <span>3 referidos = +3 análisis extra</span>
+            <span>5 referidos = +7 análisis extra</span>
+            <span>10 referidos = 1 mes PRO gratis</span>
+          </div>
+
+          {nextReferralGoal !== null ? (
+            <div
+              style={{
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                borderRadius: "12px",
+                padding: "14px",
+                color: "#1e3a8a",
+                fontSize: "14px",
+                lineHeight: 1.6,
+              }}
+            >
+              Te faltan <strong>{referralsRemaining}</strong> referido
+              {referralsRemaining === 1 ? "" : "s"} para alcanzar tu siguiente
+              meta de <strong>{nextReferralGoal}</strong>.
+            </div>
+          ) : (
+            <div
+              style={{
+                background: "#ecfdf5",
+                border: "1px solid #86efac",
+                borderRadius: "12px",
+                padding: "14px",
+                color: "#166534",
+                fontSize: "14px",
+                lineHeight: 1.6,
+              }}
+            >
+              Ya alcanzaste el nivel máximo visible de recompensas. El siguiente
+              paso es pasar esto a afiliados y comisiones.
+            </div>
+          )}
 
           <div
             style={{
