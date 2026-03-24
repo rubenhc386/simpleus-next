@@ -1,82 +1,81 @@
-import { headers } from "next/headers";
 import Stripe from "stripe";
+import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!stripeSecretKey) {
-      throw new Error("Falta STRIPE_SECRET_KEY.");
-    }
-
-    if (!webhookSecret) {
-      throw new Error("Falta STRIPE_WEBHOOK_SECRET.");
-    }
-
-    if (!supabaseUrl) {
-      throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL.");
-    }
-
-    if (!serviceRoleKey) {
-      throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY.");
-    }
-
-    const stripe = new Stripe(stripeSecretKey);
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
     const body = await req.text();
     const headersList = await headers();
-    const sig = headersList.get("stripe-signature");
+    const signature = headersList.get("stripe-signature");
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    if (!sig) {
-      return new Response("No signature", { status: 400 });
+    if (!signature || !webhookSecret) {
+      return new Response("Falta firma o webhook secret.", { status: 400 });
     }
 
-    let event: any;
-
-    try {
-      event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
-    } catch (err: any) {
-      console.error("Webhook signature error:", err.message);
-      return new Response(`Webhook Error: ${err.message}`, { status: 400 });
-    }
+    const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
 
-      if (!userId) {
-        console.error("No userId in session metadata");
-        return new Response("No userId", { status: 400 });
-      }
+      const userId =
+        typeof session.metadata?.userId === "string"
+          ? session.metadata.userId
+          : null;
 
-      const { error } = await supabaseAdmin.from("profiles").upsert(
-        {
-          id: userId,
-          plan: "pro",
-        },
-        {
-          onConflict: "id",
+      const userEmail =
+        typeof session.metadata?.userEmail === "string"
+          ? session.metadata.userEmail
+          : session.customer_details?.email || null;
+
+      if (userId) {
+        const { error: planError } = await supabaseAdmin
+          .from("profiles")
+          .update({ plan: "pro" })
+          .eq("id", userId);
+
+        if (planError) {
+          console.error("Error actualizando plan a pro:", planError);
         }
-      );
 
-      if (error) {
-        console.error("Error activando PRO:", error);
-        return new Response("DB error", { status: 500 });
+        const { error: conversionError } = await supabaseAdmin
+          .from("affiliate_conversions")
+          .update({ status: "paid" })
+          .eq("user_id", userId)
+          .eq("status", "lead");
+
+        if (conversionError) {
+          console.error(
+            "Error actualizando affiliate_conversions a paid por user_id:",
+            conversionError
+          );
+        }
+      } else if (userEmail) {
+        const { error: conversionErrorByEmail } = await supabaseAdmin
+          .from("affiliate_conversions")
+          .update({ status: "paid" })
+          .eq("user_email", userEmail)
+          .eq("status", "lead");
+
+        if (conversionErrorByEmail) {
+          console.error(
+            "Error actualizando affiliate_conversions a paid por email:",
+            conversionErrorByEmail
+          );
+        }
       }
-
-      console.log("Usuario activado PRO:", userId);
     }
 
     return new Response("ok", { status: 200 });
   } catch (error: any) {
-    console.error("Webhook fatal error:", error);
-    return new Response(error?.message || "Internal webhook error", {
-      status: 500,
-    });
+    console.error("Error en stripe webhook:", error);
+    return new Response(`Webhook error: ${error.message}`, { status: 400 });
   }
 }

@@ -1,82 +1,86 @@
+import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 export async function POST(req: Request) {
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
-
-    if (!stripeSecretKey) {
-      throw new Error("Falta STRIPE_SECRET_KEY.");
-    }
-
-    if (!appUrl) {
-      throw new Error("Falta NEXT_PUBLIC_APP_URL.");
-    }
-
-    if (!supabaseUrl) {
-      throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL.");
-    }
-
-    if (!supabaseAnonKey) {
-      throw new Error("Falta NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-    }
-
-    if (!priceId) {
-      throw new Error("Falta NEXT_PUBLIC_STRIPE_PRICE_ID.");
-    }
-
-    const stripe = new Stripe(stripeSecretKey);
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
     const authHeader = req.headers.get("authorization");
 
     if (!authHeader?.startsWith("Bearer ")) {
-      throw new Error("No se encontró token de autorización.");
+      return NextResponse.json(
+        { error: "No se recibió autorización válida." },
+        { status: 401 }
+      );
     }
 
-    const accessToken = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "");
 
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser(accessToken);
+    } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
-      throw new Error("Usuario no autenticado.");
+      return NextResponse.json(
+        { error: "No se pudo identificar al usuario." },
+        { status: 401 }
+      );
+    }
+
+    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: "Falta NEXT_PUBLIC_STRIPE_PRICE_ID." },
+        { status: 500 }
+      );
+    }
+
+    if (!appUrl) {
+      return NextResponse.json(
+        { error: "Falta NEXT_PUBLIC_APP_URL." },
+        { status: 500 }
+      );
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
+      payment_method_types: ["card"],
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/pro/exito`,
-      cancel_url: `${appUrl}/pro/cancelado`,
+      success_url: `${appUrl}/dashboard?checkout=success`,
+      cancel_url: `${appUrl}/pro?checkout=cancel`,
+      customer_email: user.email || undefined,
       metadata: {
         userId: user.id,
+        userEmail: user.email || "",
+      },
+      subscription_data: {
+        metadata: {
+          userId: user.id,
+          userEmail: user.email || "",
+        },
       },
     });
 
-    if (!session.url) {
-      throw new Error("Stripe no devolvió una URL de pago.");
-    }
-
-    return Response.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
   } catch (error: any) {
-    console.error("Error creando checkout:", error);
+    console.error("Error en /api/checkout:", error);
 
-    return Response.json(
-      {
-        error: error?.message || "No se pudo crear la sesión de pago.",
-      },
+    return NextResponse.json(
+      { error: error?.message || "No se pudo iniciar checkout." },
       { status: 500 }
     );
   }
