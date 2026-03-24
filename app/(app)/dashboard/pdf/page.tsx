@@ -39,6 +39,18 @@ function getUrgenciaStyles(urgencia: string) {
   };
 }
 
+function calcularDiasRestantes(trialStartedAt: string | null) {
+  if (!trialStartedAt) return 0;
+
+  const inicio = new Date(trialStartedAt).getTime();
+  const ahora = Date.now();
+  const diffMs = ahora - inicio;
+  const diffDias = diffMs / (1000 * 60 * 60 * 24);
+  const restantes = Math.ceil(3 - diffDias);
+
+  return Math.max(restantes, 0);
+}
+
 export default function PdfPage() {
   const [file, setFile] = useState<File | null>(null);
   const [resultado, setResultado] = useState<ResultadoMapa | null>(null);
@@ -48,10 +60,19 @@ export default function PdfPage() {
   const [analysisCount, setAnalysisCount] = useState(0);
   const [plan, setPlan] = useState<"free" | "pro">("free");
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
+  const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
   const freeLimit = 3;
-  const realFreeLimit = freeLimit + bonusAnalyses;
   const isPro = plan === "pro";
+  const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
+  const isTrialActive = isPro || trialDaysRemaining > 0;
+
+  const realFreeLimit = isPro
+    ? Number.MAX_SAFE_INTEGER
+    : isTrialActive
+    ? freeLimit + bonusAnalyses
+    : bonusAnalyses;
+
   const isBlocked = !isPro && analysisCount >= realFreeLimit;
 
   async function cargarConteoYPlan() {
@@ -62,6 +83,7 @@ export default function PdfPage() {
     if (!user) {
       setPlan("free");
       setBonusAnalyses(0);
+      setTrialStartedAt(null);
       setAnalysisCount(0);
       setLimitReached(false);
       return;
@@ -69,17 +91,18 @@ export default function PdfPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("plan, bonus_analyses")
+      .select("plan, bonus_analyses, trial_started_at")
       .eq("id", user.id)
       .maybeSingle();
 
     const nextPlan =
       !profileError && profileData?.plan === "pro" ? "pro" : "free";
-
     const nextBonus = profileData?.bonus_analyses ?? 0;
+    const nextTrialStartedAt = profileData?.trial_started_at ?? null;
 
     setPlan(nextPlan);
     setBonusAnalyses(nextBonus);
+    setTrialStartedAt(nextTrialStartedAt);
 
     const { count, error: countError } = await supabase
       .from("analyses")
@@ -87,17 +110,26 @@ export default function PdfPage() {
       .eq("user_id", user.id);
 
     if (countError) {
-      console.error("Error conteo PDF:", countError);
+      console.error("Error cargando conteo de PDF:", countError);
       return;
     }
 
     const nextCount = count ?? 0;
     setAnalysisCount(nextCount);
 
+    const nextTrialDaysRemaining = calcularDiasRestantes(nextTrialStartedAt);
+    const nextTrialActive = nextPlan === "pro" || nextTrialDaysRemaining > 0;
+    const nextLimit =
+      nextPlan === "pro"
+        ? Number.MAX_SAFE_INTEGER
+        : nextTrialActive
+        ? freeLimit + nextBonus
+        : nextBonus;
+
     if (nextPlan === "pro") {
       setLimitReached(false);
     } else {
-      setLimitReached(nextCount >= freeLimit + nextBonus);
+      setLimitReached(nextCount >= nextLimit);
     }
   }
 
@@ -146,7 +178,7 @@ export default function PdfPage() {
       try {
         data = await res.json();
       } catch {
-        throw new Error("Respuesta inválida del servidor.");
+        throw new Error("El servidor devolvió una respuesta inválida.");
       }
 
       if (data?.limitReached && !isPro) {
@@ -165,7 +197,7 @@ export default function PdfPage() {
       const message =
         err instanceof Error
           ? err.message
-          : "Error al analizar el PDF.";
+          : "Ocurrió un error al analizar el PDF.";
       setError(message);
     } finally {
       setCargando(false);
@@ -177,78 +209,308 @@ export default function PdfPage() {
     : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "32px", paddingTop: "40px", paddingBottom: "40px" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "32px",
+        paddingTop: "40px",
+        paddingBottom: "40px",
+      }}
+    >
+      <section
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "16px",
+          padding: "28px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: "32px", margin: "0 0 10px 0" }}>
+            Analizar carta en PDF
+          </h1>
 
-      <section style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "28px", display: "flex", flexDirection: "column", gap: "16px" }}>
-        
-        <h1 style={{ fontSize: "32px", margin: 0 }}>
-          Analizar carta en PDF
-        </h1>
+          <div
+            style={{
+              background: isPro
+                ? "#ecfdf5"
+                : isBlocked
+                ? "#fff7ed"
+                : "#f9fafb",
+              border: isPro
+                ? "1px solid #86efac"
+                : isBlocked
+                ? "1px solid #fdba74"
+                : "1px solid #e5e7eb",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              fontSize: "14px",
+              color: isPro ? "#166534" : isBlocked ? "#9a3412" : "#374151",
+              width: "fit-content",
+              fontWeight: 600,
+              marginBottom: "12px",
+            }}
+          >
+            {isPro ? (
+              <>Plan <strong>PRO activo</strong></>
+            ) : (
+              <>
+                Plan gratuito: <strong>{analysisCount} de {realFreeLimit}</strong>{" "}
+                análisis usados
+                {bonusAnalyses > 0 && (
+                  <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
+                    (+{bonusAnalyses} por referidos)
+                  </span>
+                )}
+              </>
+            )}
+          </div>
 
-        <div
-          style={{
-            background: isPro ? "#ecfdf5" : isBlocked ? "#fff7ed" : "#f9fafb",
-            border: isPro ? "1px solid #86efac" : isBlocked ? "1px solid #fdba74" : "1px solid #e5e7eb",
-            borderRadius: "10px",
-            padding: "10px 14px",
-            fontSize: "14px",
-            fontWeight: 600,
-          }}
-        >
-          {isPro ? (
-            <>Plan <strong>PRO activo</strong></>
-          ) : (
-            <>
-              Plan gratuito: {analysisCount} de {realFreeLimit}
-              {bonusAnalyses > 0 && (
-                <span style={{ marginLeft: 8, color: "#1d4ed8" }}>
-                  (+{bonusAnalyses} por referidos)
-                </span>
-              )}
-            </>
+          {!isPro && (
+            <p
+              style={{
+                color: "#92400e",
+                lineHeight: 1.6,
+                margin: "0 0 12px 0",
+                fontSize: "14px",
+              }}
+            >
+              {isTrialActive
+                ? `Tu prueba gratuita sigue activa. Te quedan ${trialDaysRemaining} día${
+                    trialDaysRemaining === 1 ? "" : "s"
+                  }.`
+                : "Tu prueba gratuita terminó. Ahora solo puedes seguir usando análisis ganados por referidos o pasar a PRO."}
+            </p>
           )}
+
+          <p style={{ color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
+            Sube un archivo PDF y SimpleUS intentará extraer el texto para
+            generar un Mapa SimpleUS.
+          </p>
         </div>
 
         {isBlocked && !isPro && (
-          <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: "12px", padding: "14px 16px", color: "#9a3412" }}>
-            Ya alcanzaste tu límite actual. Activa PRO para continuar.
+          <div
+            style={{
+              background: "#fff7ed",
+              border: "1px solid #fdba74",
+              borderRadius: "12px",
+              padding: "14px 16px",
+              color: "#9a3412",
+              lineHeight: 1.6,
+            }}
+          >
+            Ya alcanzaste tu límite actual. Para seguir analizando cartas en PDF,
+            puedes invitar personas o activar SimpleUS Pro.
           </div>
         )}
 
-        <input
-          type="file"
-          accept="application/pdf"
-          disabled={isBlocked}
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
-
-        <button
-          onClick={analizarPDF}
-          disabled={cargando || isBlocked}
+        <label
           style={{
-            background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
-            color: "white",
-            padding: "12px",
+            display: "inline-block",
+            background: isBlocked ? "#e5e7eb" : "#ffffff",
+            border: "1px solid #d1d5db",
             borderRadius: "10px",
-            border: "none",
-            cursor: cargando || isBlocked ? "not-allowed" : "pointer",
+            padding: "12px 16px",
+            cursor: isBlocked ? "not-allowed" : "pointer",
+            fontWeight: 600,
+            width: "fit-content",
+            color: isBlocked ? "#6b7280" : "#111827",
           }}
         >
-          {isBlocked ? "Límite alcanzado" : cargando ? "Analizando..." : "Analizar PDF"}
-        </button>
+          Seleccionar PDF
+          <input
+            type="file"
+            accept="application/pdf"
+            disabled={isBlocked}
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                setFile(e.target.files[0]);
+                setError("");
+              }
+            }}
+            style={{ display: "none" }}
+          />
+        </label>
 
-        {error && <span style={{ color: "#b91c1c" }}>{error}</span>}
+        {file && (
+          <div style={{ color: "#4b5563" }}>
+            <strong>Archivo seleccionado:</strong> {file.name}
+          </div>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            onClick={analizarPDF}
+            disabled={cargando || isBlocked}
+            style={{
+              background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
+              color: "white",
+              padding: "12px 18px",
+              borderRadius: "10px",
+              border: "none",
+              cursor: cargando || isBlocked ? "not-allowed" : "pointer",
+              fontWeight: 600,
+            }}
+          >
+            {isBlocked
+              ? "Límite alcanzado"
+              : cargando
+              ? "Analizando PDF..."
+              : "Analizar PDF"}
+          </button>
+
+          {error && (
+            <span style={{ color: "#b91c1c", fontSize: "14px" }}>{error}</span>
+          )}
+        </div>
       </section>
 
+      {limitReached && !isPro && (
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>
+            {isTrialActive
+              ? "Has llegado al límite de tu plan actual"
+              : "Tu prueba gratuita ya terminó"}
+          </h2>
+
+          <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
+            {isTrialActive ? (
+              <>
+                Ya utilizaste tus <strong>{realFreeLimit} análisis disponibles</strong>.
+                Puedes actualizar a <strong>SimpleUS Pro</strong> para seguir
+                analizando cartas sin límite.
+              </>
+            ) : (
+              <>
+                Tu prueba gratuita terminó. Ahora solo puedes seguir usando
+                <strong> análisis ganados por referidos</strong> o actualizar a
+                <strong> SimpleUS Pro</strong>.
+              </>
+            )}
+          </p>
+
+          <Link
+            href="/pro"
+            style={{
+              display: "inline-block",
+              marginTop: "10px",
+              background: "#1d4ed8",
+              color: "white",
+              padding: "14px 18px",
+              borderRadius: "10px",
+              textDecoration: "none",
+              fontWeight: 700,
+              width: "fit-content",
+            }}
+          >
+            Ver SimpleUS Pro
+          </Link>
+        </section>
+      )}
+
       {resultado && urgenciaStyles && (
-        <section style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "28px" }}>
-          
-          <h2>Mapa SimpleUS</h2>
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "22px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <h2 style={{ margin: 0 }}>Mapa SimpleUS</h2>
 
-          <p><strong>{resultado.tipo}</strong></p>
-          <p>{resultado.significado}</p>
-          <p>{resultado.urgencia}</p>
+            <span
+              style={{
+                background: urgenciaStyles.bg,
+                color: urgenciaStyles.color,
+                padding: "8px 12px",
+                borderRadius: "999px",
+                fontWeight: 700,
+                fontSize: "13px",
+              }}
+            >
+              {urgenciaStyles.label}
+            </span>
+          </div>
 
+          <div>
+            <strong>Qué es esta carta</strong>
+            <p style={{ marginTop: "8px", color: "#4b5563" }}>
+              {resultado.tipo}
+            </p>
+          </div>
+
+          <div>
+            <strong>Qué significa</strong>
+            <p style={{ marginTop: "8px", color: "#4b5563" }}>
+              {resultado.significado}
+            </p>
+          </div>
+
+          <div>
+            <strong>Nivel de urgencia</strong>
+            <p style={{ marginTop: "8px", color: "#4b5563" }}>
+              {resultado.urgencia}
+            </p>
+          </div>
+
+          <div>
+            <strong>Qué podrías hacer</strong>
+            <ul style={{ marginTop: "8px", color: "#4b5563", lineHeight: 1.8 }}>
+              {resultado.pasos.map((paso, index) => (
+                <li key={index}>{paso}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              borderRadius: "14px",
+              padding: "18px",
+            }}
+          >
+            <strong style={{ color: "#1d4ed8" }}>Mensaje de calma</strong>
+            <p style={{ marginTop: "10px", color: "#1e3a8a" }}>
+              {resultado.calma}
+            </p>
+          </div>
         </section>
       )}
     </div>

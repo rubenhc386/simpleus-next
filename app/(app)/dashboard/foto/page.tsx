@@ -39,6 +39,18 @@ function getUrgenciaStyles(urgencia: string) {
   };
 }
 
+function calcularDiasRestantes(trialStartedAt: string | null) {
+  if (!trialStartedAt) return 0;
+
+  const inicio = new Date(trialStartedAt).getTime();
+  const ahora = Date.now();
+  const diffMs = ahora - inicio;
+  const diffDias = diffMs / (1000 * 60 * 60 * 24);
+  const restantes = Math.ceil(3 - diffDias);
+
+  return Math.max(restantes, 0);
+}
+
 export default function FotoPage() {
   const [file, setFile] = useState<File | null>(null);
   const [resultado, setResultado] = useState<ResultadoMapa | null>(null);
@@ -48,10 +60,19 @@ export default function FotoPage() {
   const [analysisCount, setAnalysisCount] = useState(0);
   const [plan, setPlan] = useState<"free" | "pro">("free");
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
+  const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
   const freeLimit = 3;
-  const realFreeLimit = freeLimit + bonusAnalyses;
   const isPro = plan === "pro";
+  const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
+  const isTrialActive = isPro || trialDaysRemaining > 0;
+
+  const realFreeLimit = isPro
+    ? Number.MAX_SAFE_INTEGER
+    : isTrialActive
+    ? freeLimit + bonusAnalyses
+    : bonusAnalyses;
+
   const isBlocked = !isPro && analysisCount >= realFreeLimit;
 
   async function cargarConteoYPlan() {
@@ -62,6 +83,7 @@ export default function FotoPage() {
     if (!user) {
       setPlan("free");
       setBonusAnalyses(0);
+      setTrialStartedAt(null);
       setAnalysisCount(0);
       setLimitReached(false);
       return;
@@ -69,16 +91,18 @@ export default function FotoPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("plan, bonus_analyses")
+      .select("plan, bonus_analyses, trial_started_at")
       .eq("id", user.id)
       .maybeSingle();
 
     const nextPlan =
       !profileError && profileData?.plan === "pro" ? "pro" : "free";
     const nextBonus = profileData?.bonus_analyses ?? 0;
+    const nextTrialStartedAt = profileData?.trial_started_at ?? null;
 
     setPlan(nextPlan);
     setBonusAnalyses(nextBonus);
+    setTrialStartedAt(nextTrialStartedAt);
 
     const { count, error: countError } = await supabase
       .from("analyses")
@@ -93,10 +117,19 @@ export default function FotoPage() {
     const nextCount = count ?? 0;
     setAnalysisCount(nextCount);
 
+    const nextTrialDaysRemaining = calcularDiasRestantes(nextTrialStartedAt);
+    const nextTrialActive = nextPlan === "pro" || nextTrialDaysRemaining > 0;
+    const nextLimit =
+      nextPlan === "pro"
+        ? Number.MAX_SAFE_INTEGER
+        : nextTrialActive
+        ? freeLimit + nextBonus
+        : nextBonus;
+
     if (nextPlan === "pro") {
       setLimitReached(false);
     } else {
-      setLimitReached(nextCount >= freeLimit + nextBonus);
+      setLimitReached(nextCount >= nextLimit);
     }
   }
 
@@ -214,43 +247,64 @@ export default function FotoPage() {
           <h1 style={{ fontSize: "32px", margin: "0 0 10px 0" }}>
             Analizar carta con foto
           </h1>
+
+          <div
+            style={{
+              background: isPro
+                ? "#ecfdf5"
+                : isBlocked
+                ? "#fff7ed"
+                : "#f9fafb",
+              border: isPro
+                ? "1px solid #86efac"
+                : isBlocked
+                ? "1px solid #fdba74"
+                : "1px solid #e5e7eb",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              fontSize: "14px",
+              color: isPro ? "#166534" : isBlocked ? "#9a3412" : "#374151",
+              width: "fit-content",
+              fontWeight: 600,
+              marginBottom: "12px",
+            }}
+          >
+            {isPro ? (
+              <>Plan <strong>PRO activo</strong></>
+            ) : (
+              <>
+                Plan gratuito: <strong>{analysisCount} de {realFreeLimit}</strong>{" "}
+                análisis usados
+                {bonusAnalyses > 0 && (
+                  <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
+                    (+{bonusAnalyses} por referidos)
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+
+          {!isPro && (
+            <p
+              style={{
+                color: "#92400e",
+                lineHeight: 1.6,
+                margin: "0 0 12px 0",
+                fontSize: "14px",
+              }}
+            >
+              {isTrialActive
+                ? `Tu prueba gratuita sigue activa. Te quedan ${trialDaysRemaining} día${
+                    trialDaysRemaining === 1 ? "" : "s"
+                  }.`
+                : "Tu prueba gratuita terminó. Ahora solo puedes seguir usando análisis ganados por referidos o pasar a PRO."}
+            </p>
+          )}
+
           <p style={{ color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
             Sube una foto de la carta y SimpleUS intentará entenderla para
             generar un Mapa SimpleUS.
           </p>
-        </div>
-
-        <div
-          style={{
-            background: isPro
-              ? "#ecfdf5"
-              : isBlocked
-              ? "#fff7ed"
-              : "#f9fafb",
-            border: isPro
-              ? "1px solid #86efac"
-              : isBlocked
-              ? "1px solid #fdba74"
-              : "1px solid #e5e7eb",
-            borderRadius: "12px",
-            padding: "14px 16px",
-            color: isPro ? "#166534" : isBlocked ? "#9a3412" : "#374151",
-            fontSize: "14px",
-            fontWeight: 600,
-          }}
-        >
-          {isPro ? (
-            <>Plan <strong>PRO activo</strong></>
-          ) : (
-            <>
-              Plan gratuito: {analysisCount} de {realFreeLimit} análisis usados
-              {bonusAnalyses > 0 && (
-                <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
-                  (+{bonusAnalyses} de regalo por referidos)
-                </span>
-              )}
-            </>
-          )}
         </div>
 
         {isBlocked && !isPro && (
@@ -264,8 +318,8 @@ export default function FotoPage() {
               lineHeight: 1.6,
             }}
           >
-            Ya alcanzaste tu límite actual del plan gratuito. Para seguir
-            analizando cartas por foto, necesitaremos activar SimpleUS Pro.
+            Ya alcanzaste tu límite actual. Para seguir analizando cartas con foto,
+            puedes invitar personas o activar SimpleUS Pro.
           </div>
         )}
 
@@ -350,55 +404,27 @@ export default function FotoPage() {
             gap: "20px",
           }}
         >
-          <h2 style={{ margin: 0 }}>Has llegado al límite de tu plan gratuito</h2>
+          <h2 style={{ margin: 0 }}>
+            {isTrialActive
+              ? "Has llegado al límite de tu plan actual"
+              : "Tu prueba gratuita ya terminó"}
+          </h2>
 
           <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
-            Ya utilizaste tus <strong>{realFreeLimit} análisis disponibles</strong>.
-            Puedes actualizar a <strong>SimpleUS Pro</strong> para seguir
-            analizando cartas sin límite.
+            {isTrialActive ? (
+              <>
+                Ya utilizaste tus <strong>{realFreeLimit} análisis disponibles</strong>.
+                Puedes actualizar a <strong>SimpleUS Pro</strong> para seguir
+                analizando cartas sin límite.
+              </>
+            ) : (
+              <>
+                Tu prueba gratuita terminó. Ahora solo puedes seguir usando
+                <strong> análisis ganados por referidos</strong> o actualizar a
+                <strong> SimpleUS Pro</strong>.
+              </>
+            )}
           </p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "20px",
-            }}
-          >
-            <div
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: "12px",
-                padding: "18px",
-              }}
-            >
-              <strong>Plan gratuito</strong>
-              <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
-                <li>{realFreeLimit} análisis disponibles</li>
-                <li>Subir foto</li>
-                <li>Historial básico</li>
-              </ul>
-            </div>
-
-            <div
-              style={{
-                border: "2px solid #1d4ed8",
-                borderRadius: "12px",
-                padding: "18px",
-                background: "#eff6ff",
-              }}
-            >
-              <strong>SimpleUS Pro</strong>
-              <p style={{ fontSize: "20px", fontWeight: 700 }}>$8.99 / mes</p>
-              <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
-                <li>Análisis ilimitados</li>
-                <li>Subir fotos de cartas</li>
-                <li>Analizar PDFs</li>
-                <li>Historial completo</li>
-                <li>Explicaciones claras en español</li>
-              </ul>
-            </div>
-          </div>
 
           <Link
             href="/pro"
@@ -479,7 +505,7 @@ export default function FotoPage() {
 
           <div>
             <strong>Qué podrías hacer</strong>
-            <ul style={{ marginTop: "8px", color: "#4b5563" }}>
+            <ul style={{ marginTop: "8px", color: "#4b5563", lineHeight: 1.8 }}>
               {resultado.pasos.map((paso, index) => (
                 <li key={index}>{paso}</li>
               ))}

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
 type ParsedAnalysis = {
   tipo: string;
@@ -10,31 +10,32 @@ type ParsedAnalysis = {
   modo?: string;
 };
 
+function calcularDiasRestantes(trialStartedAt: string | null) {
+  if (!trialStartedAt) return 0;
+
+  const inicio = new Date(trialStartedAt).getTime();
+  const ahora = Date.now();
+  const diffMs = ahora - inicio;
+  const diffDias = diffMs / (1000 * 60 * 60 * 24);
+  const restantes = Math.ceil(3 - diffDias);
+
+  return Math.max(restantes, 0);
+}
+
 export async function POST(req: Request) {
   try {
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const openAiKey = process.env.OPENAI_API_KEY;
 
-    if (!openaiKey) {
+    if (!openAiKey) {
       return Response.json(
-        { error: "Falta OPENAI_API_KEY." },
-        { status: 500 }
-      );
-    }
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return Response.json(
-        { error: "Faltan variables de Supabase en el servidor." },
+        { error: "Falta OPENAI_API_KEY en el servidor." },
         { status: 500 }
       );
     }
 
     const client = new OpenAI({
-      apiKey: openaiKey,
+      apiKey: openAiKey,
     });
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json();
     const texto = body?.texto;
@@ -54,52 +55,64 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: profileData } = await supabaseAdmin
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("plan")
+      .select("plan, bonus_analyses, trial_started_at")
       .eq("id", userId)
       .maybeSingle();
 
-    const isPro = profileData?.plan === "pro";
-
-    if (!isPro) {
-      const { count, error: countError } = await supabaseAdmin
-        .from("analyses")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId);
-
-      if (countError) {
-        console.error("Error contando análisis de texto:", countError);
-        return Response.json(
-          { error: "No se pudo verificar el límite del plan." },
-          { status: 500 }
-        );
-      }
-
-      if ((count ?? 0) >= 3) {
-        return Response.json(
-          {
-            error:
-              "Has llegado al límite del plan gratuito. Puedes actualizar a SimpleUS Pro.",
-            limitReached: true,
-          },
-          { status: 403 }
-        );
-      }
+    if (profileError) {
+      console.error("Error cargando profile para texto:", profileError);
+      return Response.json(
+        { error: "No se pudo validar el plan del usuario." },
+        { status: 500 }
+      );
     }
 
-    const response = await client.responses.create({
-      model: "gpt-5.2",
-      input: [
+    const isPro = profileData?.plan === "pro";
+    const bonusAnalyses = profileData?.bonus_analyses ?? 0;
+    const trialStartedAt = profileData?.trial_started_at ?? null;
+    const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
+    const isTrialActive = isPro || trialDaysRemaining > 0;
+
+    const freeLimit = 3;
+    const realFreeLimit = isPro
+      ? Number.MAX_SAFE_INTEGER
+      : isTrialActive
+      ? freeLimit + bonusAnalyses
+      : bonusAnalyses;
+
+    const { count, error: countError } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    if (countError) {
+      console.error("Error contando análisis de texto:", countError);
+      return Response.json(
+        { error: "No se pudo verificar el límite del plan." },
+        { status: 500 }
+      );
+    }
+
+    const currentCount = count ?? 0;
+
+    if (!isPro && currentCount >= realFreeLimit) {
+      return Response.json(
         {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: `
+          error: isTrialActive
+            ? "Has llegado al límite disponible de tu plan actual."
+            : "Tu prueba gratuita terminó. Solo puedes seguir con análisis ganados por referidos o activando PRO.",
+          limitReached: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    const prompt = `
 Eres SimpleUS by RubenHC3_, una aplicación que ayuda a hispanohablantes en Estados Unidos a entender cartas administrativas en inglés.
 
-Analiza esta carta y devuelve solamente JSON válido con esta estructura exacta:
+Tu tarea es analizar el texto de una carta y devolver solamente JSON válido con esta estructura exacta:
 
 {
   "tipo": "Qué es esta carta",
@@ -114,18 +127,20 @@ Reglas:
 - Responde siempre en español claro.
 - No des asesoría legal.
 - No inventes hechos que no estén sustentados por el texto.
-- Si el texto no es suficiente, dilo con honestidad.
+- Si el texto es ambiguo, dilo con honestidad.
 - El campo "pasos" debe ser un arreglo de 3 a 5 pasos concretos.
 - El tono debe ser claro, humano y calmado.
 - Devuelve solamente JSON válido, sin texto extra.
 
-Carta:
+Texto de la carta:
+"""
 ${texto}
-              `,
-            },
-          ],
-        },
-      ],
+"""
+`;
+
+    const response = await client.responses.create({
+      model: "gpt-5.2",
+      input: prompt,
     });
 
     const rawText = response.output_text;
@@ -151,7 +166,7 @@ ${texto}
       );
     }
 
-    const { error: insertError } = await supabaseAdmin.from("analyses").insert([
+    const { error: insertError } = await supabase.from("analyses").insert([
       {
         user_id: userId,
         original_text: texto,
@@ -165,10 +180,7 @@ ${texto}
     ]);
 
     if (insertError) {
-      console.error(
-        "Error guardando análisis de texto en Supabase:",
-        insertError
-      );
+      console.error("Error guardando análisis de texto en Supabase:", insertError);
       return Response.json(
         { error: "El análisis se generó, pero no se pudo guardar." },
         { status: 500 }
