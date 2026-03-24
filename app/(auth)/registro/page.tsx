@@ -166,20 +166,48 @@ export default function RegistroPage() {
       }
 
       if (referredById) {
-        const { error: referralIncrementError } = await supabase.rpc(
-          "increment_referrals",
-          {
-            user_id_input: referredById,
-          }
-        );
+  const { error: referralIncrementError } = await supabase.rpc(
+    "increment_referrals",
+    {
+      user_id_input: referredById,
+    }
+  );
 
-        if (referralIncrementError) {
-          console.error(
-            "No se pudo incrementar referrals_count:",
-            referralIncrementError
-          );
-        }
-      }
+  if (referralIncrementError) {
+    console.error(
+      "No se pudo incrementar referrals_count:",
+      referralIncrementError
+    );
+  }
+
+  const { error: inviterBonusError } = await supabase.rpc(
+    "add_bonus_analysis",
+    {
+      user_id_input: referredById,
+    }
+  );
+
+  if (inviterBonusError) {
+    console.error(
+      "No se pudo sumar bonus al invitador:",
+      inviterBonusError
+    );
+  }
+
+  const { error: invitedBonusError } = await supabase.rpc(
+    "add_bonus_analysis",
+    {
+      user_id_input: userId,
+    }
+  );
+
+  if (invitedBonusError) {
+    console.error(
+      "No se pudo sumar bonus al invitado:",
+      invitedBonusError
+    );
+  }
+}
 
       setRegistroExitoso(true);
       setMensaje(

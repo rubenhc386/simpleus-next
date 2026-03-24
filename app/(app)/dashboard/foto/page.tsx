@@ -47,10 +47,12 @@ export default function FotoPage() {
   const [limitReached, setLimitReached] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
   const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [bonusAnalyses, setBonusAnalyses] = useState(0);
 
   const freeLimit = 3;
+  const realFreeLimit = freeLimit + bonusAnalyses;
   const isPro = plan === "pro";
-  const isBlocked = !isPro && analysisCount >= freeLimit;
+  const isBlocked = !isPro && analysisCount >= realFreeLimit;
 
   async function cargarConteoYPlan() {
     const {
@@ -59,6 +61,7 @@ export default function FotoPage() {
 
     if (!user) {
       setPlan("free");
+      setBonusAnalyses(0);
       setAnalysisCount(0);
       setLimitReached(false);
       return;
@@ -66,14 +69,16 @@ export default function FotoPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("plan")
+      .select("plan, bonus_analyses")
       .eq("id", user.id)
       .maybeSingle();
 
     const nextPlan =
       !profileError && profileData?.plan === "pro" ? "pro" : "free";
+    const nextBonus = profileData?.bonus_analyses ?? 0;
 
     setPlan(nextPlan);
+    setBonusAnalyses(nextBonus);
 
     const { count, error: countError } = await supabase
       .from("analyses")
@@ -91,7 +96,7 @@ export default function FotoPage() {
     if (nextPlan === "pro") {
       setLimitReached(false);
     } else {
-      setLimitReached(nextCount >= freeLimit);
+      setLimitReached(nextCount >= freeLimit + nextBonus);
     }
   }
 
@@ -238,7 +243,12 @@ export default function FotoPage() {
             <>Plan <strong>PRO activo</strong></>
           ) : (
             <>
-              Plan gratuito: {analysisCount} de {freeLimit} análisis usados
+              Plan gratuito: {analysisCount} de {realFreeLimit} análisis usados
+              {bonusAnalyses > 0 && (
+                <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
+                  (+{bonusAnalyses} de regalo por referidos)
+                </span>
+              )}
             </>
           )}
         </div>
@@ -254,8 +264,8 @@ export default function FotoPage() {
               lineHeight: 1.6,
             }}
           >
-            Ya alcanzaste el límite del plan gratuito. Para seguir analizando
-            cartas por foto, necesitaremos activar SimpleUS Pro.
+            Ya alcanzaste tu límite actual del plan gratuito. Para seguir
+            analizando cartas por foto, necesitaremos activar SimpleUS Pro.
           </div>
         )}
 
@@ -340,13 +350,55 @@ export default function FotoPage() {
             gap: "20px",
           }}
         >
-          <h2 style={{ margin: 0 }}>Has llegado al límite del plan gratuito</h2>
+          <h2 style={{ margin: 0 }}>Has llegado al límite de tu plan gratuito</h2>
 
           <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
-            Ya utilizaste los <strong>3 análisis gratuitos</strong>. Puedes
-            actualizar a <strong>SimpleUS Pro</strong> para seguir analizando
-            cartas sin límite.
+            Ya utilizaste tus <strong>{realFreeLimit} análisis disponibles</strong>.
+            Puedes actualizar a <strong>SimpleUS Pro</strong> para seguir
+            analizando cartas sin límite.
           </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "20px",
+            }}
+          >
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                padding: "18px",
+              }}
+            >
+              <strong>Plan gratuito</strong>
+              <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
+                <li>{realFreeLimit} análisis disponibles</li>
+                <li>Subir foto</li>
+                <li>Historial básico</li>
+              </ul>
+            </div>
+
+            <div
+              style={{
+                border: "2px solid #1d4ed8",
+                borderRadius: "12px",
+                padding: "18px",
+                background: "#eff6ff",
+              }}
+            >
+              <strong>SimpleUS Pro</strong>
+              <p style={{ fontSize: "20px", fontWeight: 700 }}>$8.99 / mes</p>
+              <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
+                <li>Análisis ilimitados</li>
+                <li>Subir fotos de cartas</li>
+                <li>Analizar PDFs</li>
+                <li>Historial completo</li>
+                <li>Explicaciones claras en español</li>
+              </ul>
+            </div>
+          </div>
 
           <Link
             href="/pro"
