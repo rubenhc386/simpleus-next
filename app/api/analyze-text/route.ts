@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type ParsedAnalysis = {
   tipo: string;
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileData, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("plan, bonus_analyses, trial_started_at")
       .eq("id", userId)
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       ? freeLimit + bonusAnalyses
       : bonusAnalyses;
 
-    const { count, error: countError } = await supabase
+    const { count, error: countError } = await supabaseAdmin
       .from("analyses")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId);
@@ -166,7 +166,7 @@ ${texto}
       );
     }
 
-    const { error: insertError } = await supabase.from("analyses").insert([
+    const { error: insertError } = await supabaseAdmin.from("analyses").insert([
       {
         user_id: userId,
         original_text: texto,
@@ -180,7 +180,10 @@ ${texto}
     ]);
 
     if (insertError) {
-      console.error("Error guardando análisis de texto en Supabase:", insertError);
+      console.error(
+        "Error guardando análisis de texto en Supabase:",
+        insertError
+      );
       return Response.json(
         { error: "El análisis se generó, pero no se pudo guardar." },
         { status: 500 }
