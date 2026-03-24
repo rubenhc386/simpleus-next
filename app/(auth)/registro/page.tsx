@@ -153,12 +153,13 @@ export default function RegistroPage() {
           generarCodigo() + Math.floor(Math.random() * 10).toString();
       }
 
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        plan: "free",
-        referral_code: nuevoCodigo,
-        referred_by: referredById,
-      });
+const { error: profileError } = await supabase.from("profiles").upsert({
+  id: userId,
+  plan: "free",
+  referral_code: nuevoCodigo,
+  referred_by: referredById,
+  trial_started_at: new Date().toISOString(),
+});
 
       if (profileError) {
         setMensaje("La cuenta se creó, pero no se pudo completar el perfil.");

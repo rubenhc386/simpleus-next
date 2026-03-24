@@ -73,14 +73,15 @@ export default function PrivateAppLayout({
             generarCodigo() + Math.floor(Math.random() * 10).toString();
         }
 
-        const { error: insertError } = await supabase.from("profiles").insert({
-          id: userId,
-          plan: "free",
-          referral_code: nuevoCodigo,
-          referred_by: referredById,
-          referrals_count: 0,
-          bonus_analyses: 0,
-        });
+const { error: insertError } = await supabase.from("profiles").insert({
+  id: userId,
+  plan: "free",
+  referral_code: nuevoCodigo,
+  referred_by: referredById,
+  referrals_count: 0,
+  bonus_analyses: 0,
+  trial_started_at: new Date().toISOString(),
+});
 
         if (insertError) {
           console.error("Error creando profile:", insertError);

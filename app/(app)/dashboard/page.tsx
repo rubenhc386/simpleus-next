@@ -12,6 +12,18 @@ type AnalysisRow = {
   user_id: string | null;
 };
 
+function calcularDiasRestantes(trialStartedAt: string | null) {
+  if (!trialStartedAt) return 0;
+
+  const inicio = new Date(trialStartedAt).getTime();
+  const ahora = Date.now();
+  const diffMs = ahora - inicio;
+  const diffDias = diffMs / (1000 * 60 * 60 * 24);
+  const restantes = Math.ceil(3 - diffDias);
+
+  return Math.max(restantes, 0);
+}
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState(0);
@@ -24,14 +36,24 @@ export default function DashboardPage() {
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
   const [copiado, setCopiado] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
   const freeLimit = 3;
-  const realFreeLimit = freeLimit + bonusAnalyses;
+  const isPro = plan === "pro";
+  const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
+  const isTrialActive = isPro || trialDaysRemaining > 0;
+
+  const realFreeLimit = isPro
+    ? Number.MAX_SAFE_INTEGER
+    : isTrialActive
+    ? freeLimit + bonusAnalyses
+    : bonusAnalyses;
 
   const progressPercent = useMemo(() => {
     if (plan === "pro") return 100;
-    const used = Math.min(count, realFreeLimit || 1);
-    return Math.round((used / (realFreeLimit || 1)) * 100);
+    const total = Math.max(realFreeLimit, 1);
+    const used = Math.min(count, total);
+    return Math.round((used / total) * 100);
   }, [count, plan, realFreeLimit]);
 
   const referralLink = referralCode
@@ -72,6 +94,7 @@ export default function DashboardPage() {
             setReferralsCount(0);
             setBonusAnalyses(0);
             setUserEmail("");
+            setTrialStartedAt(null);
             setLoading(false);
           }
           return;
@@ -82,7 +105,9 @@ export default function DashboardPage() {
 
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("plan, referral_code, referrals_count, bonus_analyses")
+          .select(
+            "plan, referral_code, referrals_count, bonus_analyses, trial_started_at"
+          )
           .eq("id", user.id)
           .single();
 
@@ -112,6 +137,7 @@ export default function DashboardPage() {
         setReferralCode(code || "");
         setReferralsCount(profileData?.referrals_count || 0);
         setBonusAnalyses(profileData?.bonus_analyses || 0);
+        setTrialStartedAt(profileData?.trial_started_at || null);
 
         const { data, error } = await supabase
           .from("analyses")
@@ -144,6 +170,7 @@ export default function DashboardPage() {
           setReferralsCount(0);
           setBonusAnalyses(0);
           setUserEmail("");
+          setTrialStartedAt(null);
         }
       } finally {
         if (active) {
@@ -363,7 +390,9 @@ export default function DashboardPage() {
                 color: "#111827",
               }}
             >
-              Te estás quedando sin análisis gratuitos
+              {isTrialActive
+                ? "Tu prueba gratuita está corriendo"
+                : "Tu prueba gratuita terminó"}
             </h2>
 
             <p
@@ -374,9 +403,23 @@ export default function DashboardPage() {
                 maxWidth: "820px",
               }}
             >
+              {isTrialActive
+                ? `Tienes ${trialDaysRemaining} día${
+                    trialDaysRemaining === 1 ? "" : "s"
+                  } restantes para usar tus análisis base.`
+                : "Ya no tienes análisis base activos. Ahora solo puedes seguir usando SimpleUS con referidos o pasando a PRO."}
+            </p>
+
+            <p
+              style={{
+                margin: 0,
+                lineHeight: 1.7,
+                color: "#7c2d12",
+                maxWidth: "820px",
+              }}
+            >
               Ya usaste {Math.min(count, realFreeLimit)} de {realFreeLimit} análisis
-              disponibles. Evita quedarte sin poder entender una carta
-              importante a tiempo.
+              disponibles.
             </p>
 
             {bonusAnalyses > 0 && (
@@ -453,9 +496,7 @@ export default function DashboardPage() {
                   cursor: cargandoPago ? "not-allowed" : "pointer",
                 }}
               >
-                {cargandoPago
-                  ? "Redirigiendo..."
-                  : "Desbloquear análisis ilimitados"}
+                {cargandoPago ? "Redirigiendo..." : "Activar PRO ahora"}
               </button>
             </div>
 
@@ -499,17 +540,6 @@ export default function DashboardPage() {
               disponibles, no podrás entenderla a tiempo.
             </div>
 
-            <div
-              style={{
-                color: "#7c2d12",
-                fontSize: "14px",
-                lineHeight: 1.5,
-              }}
-            >
-              Evita errores por no entender una carta del gobierno, seguro o
-              banco.
-            </div>
-
             {mensajePago && (
               <div
                 style={{
@@ -547,7 +577,9 @@ export default function DashboardPage() {
           <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
             {plan === "pro"
               ? "Tu acceso PRO ya está activo."
-              : "Empieza con tus análisis iniciales y luego decide si quieres pasar a SimpleUS Pro."}
+              : isTrialActive
+              ? "Tu prueba gratuita sigue activa."
+              : "Tu prueba terminó. Solo te quedan los análisis ganados por referidos."}
           </p>
         </div>
 
@@ -561,7 +593,7 @@ export default function DashboardPage() {
         >
           <strong style={{ fontSize: "18px" }}>Análisis guardados</strong>
           <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "10px" }}>
-            {loading ? "Cargando..." : count + " analisis"}
+            {loading ? "Cargando..." : count + " análisis"}
           </p>
           <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
             Conteo basado en tu historial guardado dentro de tu cuenta.
