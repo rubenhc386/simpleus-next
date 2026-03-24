@@ -74,8 +74,25 @@ export default function DashboardPage() {
           setPlan("free");
         }
 
-        setReferralCode(profileData?.referral_code || "");
-        setReferralsCount(profileData?.referrals_count || 0);
+        let code = profileData?.referral_code;
+
+if (!code) {
+  // generar código
+  code = Math.random().toString(36).substring(2, 8);
+
+  // guardar en Supabase
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ referral_code: code })
+    .eq("id", user.id);
+
+  if (updateError) {
+    console.error("Error generando referral_code:", updateError);
+  }
+}
+
+setReferralCode(code || "");
+setReferralsCount(profileData?.referrals_count || 0);
 
         const { data, error } = await supabase
           .from("analyses")
