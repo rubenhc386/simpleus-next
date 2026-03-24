@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -47,6 +48,10 @@ export default function HistorialPage() {
   const [items, setItems] = useState<AnalysisRow[]>([]);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [totalItems, setTotalItems] = useState(0);
+
+  const FREE_HISTORY_LIMIT = 3;
 
   async function cargarHistorial() {
     try {
@@ -59,8 +64,21 @@ export default function HistorialPage() {
 
       if (!user) {
         setItems([]);
+        setPlan("free");
+        setTotalItems(0);
         return;
       }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const nextPlan =
+        !profileError && profileData?.plan === "pro" ? "pro" : "free";
+
+      setPlan(nextPlan);
 
       const { data, error: dbError } = await supabase
         .from("analyses")
@@ -76,10 +94,17 @@ export default function HistorialPage() {
         return;
       }
 
-      setItems(data ?? []);
+      const rows = data ?? [];
+      setTotalItems(rows.length);
+
+      if (nextPlan === "pro") {
+        setItems(rows);
+      } else {
+        setItems(rows.slice(0, FREE_HISTORY_LIMIT));
+      }
     } catch (err) {
       console.error("Error general cargando historial:", err);
-      setError("Ocurrio un error al cargar el historial.");
+      setError("Ocurrió un error al cargar el historial.");
     } finally {
       setLoading(false);
     }
@@ -95,15 +120,17 @@ export default function HistorialPage() {
         .eq("id", id);
 
       if (deleteError) {
-        console.error("Error eliminando analisis:", deleteError);
-        setError("No se pudo eliminar el analisis.");
+        console.error("Error eliminando análisis:", deleteError);
+        setError("No se pudo eliminar el análisis.");
         return;
       }
 
-      setItems((prev) => prev.filter((item) => item.id !== id));
+      const updatedItems = items.filter((item) => item.id !== id);
+      setItems(updatedItems);
+      setTotalItems((prev) => Math.max(prev - 1, 0));
     } catch (err) {
-      console.error("Error general eliminando analisis:", err);
-      setError("Ocurrio un error al eliminar el analisis.");
+      console.error("Error general eliminando análisis:", err);
+      setError("Ocurrió un error al eliminar el análisis.");
     } finally {
       setDeletingId(null);
     }
@@ -112,6 +139,9 @@ export default function HistorialPage() {
   useEffect(() => {
     cargarHistorial();
   }, []);
+
+  const hasHiddenItems =
+    plan === "free" && totalItems > FREE_HISTORY_LIMIT;
 
   return (
     <div
@@ -142,15 +172,39 @@ export default function HistorialPage() {
             fontWeight: 700,
           }}
         >
-          Historial de analisis
+          Historial de análisis
         </div>
 
-        <h1 style={{ fontSize: "34px", margin: 0 }}>Tu historial en SimpleUS</h1>
+        <h1 style={{ fontSize: "34px", margin: 0 }}>
+          Tu historial en SimpleUS
+        </h1>
 
         <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
-          Aqui puedes revisar los analisis que ya has guardado dentro de tu
+          Aquí puedes revisar los análisis que ya has guardado dentro de tu
           cuenta.
         </p>
+
+        <div
+          style={{
+            background: plan === "pro" ? "#ecfdf5" : "#f9fafb",
+            border: plan === "pro" ? "1px solid #86efac" : "1px solid #e5e7eb",
+            borderRadius: "12px",
+            padding: "14px 16px",
+            color: plan === "pro" ? "#166534" : "#374151",
+            fontSize: "14px",
+            fontWeight: 600,
+            width: "fit-content",
+          }}
+        >
+          {plan === "pro" ? (
+            <>Plan <strong>PRO activo</strong> · Historial completo desbloqueado</>
+          ) : (
+            <>
+              Plan gratuito · viendo tus últimos{" "}
+              <strong>{Math.min(totalItems, FREE_HISTORY_LIMIT)}</strong> análisis
+            </>
+          )}
+        </div>
       </section>
 
       {error && (
@@ -189,8 +243,8 @@ export default function HistorialPage() {
             lineHeight: 1.7,
           }}
         >
-          Todavia no tienes analisis guardados. Cuando analices una carta, la
-          veras aqui.
+          Todavía no tienes análisis guardados. Cuando analices una carta, la
+          verás aquí.
         </section>
       ) : (
         <div
@@ -227,7 +281,7 @@ export default function HistorialPage() {
                 >
                   <div>
                     <h2 style={{ margin: 0, fontSize: "22px" }}>
-                      {item.tipo || "Analisis sin titulo"}
+                      {item.tipo || "Análisis sin título"}
                     </h2>
 
                     <div
@@ -252,8 +306,10 @@ export default function HistorialPage() {
                     {item.modo && (
                       <span
                         style={{
-                          background: item.modo === "real" ? "#dbeafe" : "#f3f4f6",
-                          color: item.modo === "real" ? "#1d4ed8" : "#374151",
+                          background:
+                            item.modo === "real" ? "#dbeafe" : "#f3f4f6",
+                          color:
+                            item.modo === "real" ? "#1d4ed8" : "#374151",
                           padding: "8px 12px",
                           borderRadius: "999px",
                           fontWeight: 700,
@@ -280,7 +336,7 @@ export default function HistorialPage() {
                 </div>
 
                 <div>
-                  <strong>Que significa</strong>
+                  <strong>Qué significa</strong>
                   <p
                     style={{
                       marginTop: "8px",
@@ -288,12 +344,12 @@ export default function HistorialPage() {
                       lineHeight: 1.7,
                     }}
                   >
-                    {item.significado || "Sin explicacion disponible."}
+                    {item.significado || "Sin explicación disponible."}
                   </p>
                 </div>
 
                 <div>
-                  <strong>Que podrias hacer</strong>
+                  <strong>Qué podrías hacer</strong>
                   {item.pasos && item.pasos.length > 0 ? (
                     <ul
                       style={{
@@ -365,7 +421,7 @@ export default function HistorialPage() {
                       whiteSpace: "pre-wrap",
                     }}
                   >
-                    {item.original_text || "No se guardo texto original."}
+                    {item.original_text || "No se guardó texto original."}
                   </div>
                 </details>
 
@@ -397,6 +453,78 @@ export default function HistorialPage() {
             );
           })}
         </div>
+      )}
+
+      {hasHiddenItems && (
+        <section
+          style={{
+            background: "#fff7ed",
+            border: "1px solid #fdba74",
+            borderRadius: "16px",
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#c2410c",
+            }}
+          >
+            Historial completo bloqueado
+          </div>
+
+          <h2
+            style={{
+              margin: 0,
+              fontSize: "26px",
+              color: "#111827",
+            }}
+          >
+            Tienes más análisis guardados
+          </h2>
+
+          <p
+            style={{
+              margin: 0,
+              color: "#7c2d12",
+              lineHeight: 1.7,
+              maxWidth: "760px",
+            }}
+          >
+            Solo estás viendo tus últimos {FREE_HISTORY_LIMIT} análisis.
+            Desbloquea todo tu historial con SimpleUS PRO para consultar tus
+            cartas anteriores cuando lo necesites.
+          </p>
+
+          <Link
+            href="/pro"
+            style={{
+              display: "inline-block",
+              background: "#1d4ed8",
+              color: "#ffffff",
+              padding: "12px 18px",
+              borderRadius: "10px",
+              textDecoration: "none",
+              fontWeight: 700,
+              width: "fit-content",
+            }}
+          >
+            Ver todo mi historial
+          </Link>
+
+          <div
+            style={{
+              fontSize: "13px",
+              color: "#9a3412",
+            }}
+          >
+            Tus documentos pueden ser importantes más adelante.
+          </div>
+        </section>
       )}
     </div>
   );

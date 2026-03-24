@@ -1,8 +1,10 @@
 import "./globals.css";
+import ReferralTracker from "@/components/ReferralTracker";
 
 export const metadata = {
   title: "SimpleUS",
-  description: "Entiende cartas importantes en inglés con claridad, calma y en español.",
+  description:
+    "Entiende cartas importantes en inglés con claridad, calma y en español.",
 };
 
 export default function RootLayout({
@@ -20,6 +22,7 @@ export default function RootLayout({
           fontFamily: "Arial, Helvetica, sans-serif",
         }}
       >
+        <ReferralTracker />
         {children}
       </body>
     </html>

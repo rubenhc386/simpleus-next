@@ -19,6 +19,9 @@ export default function DashboardPage() {
   const [plan, setPlan] = useState<"free" | "pro">("free");
   const [cargandoPago, setCargandoPago] = useState(false);
   const [mensajePago, setMensajePago] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [referralsCount, setReferralsCount] = useState(0);
+  const [copiado, setCopiado] = useState(false);
 
   const freeLimit = 3;
 
@@ -27,6 +30,10 @@ export default function DashboardPage() {
     const used = Math.min(count, freeLimit);
     return Math.round((used / freeLimit) * 100);
   }, [count, plan]);
+
+  const referralLink = referralCode
+    ? `https://www.simpleus.app?r=${referralCode}`
+    : "";
 
   useEffect(() => {
     let active = true;
@@ -44,6 +51,8 @@ export default function DashboardPage() {
             setPlan("free");
             setCount(0);
             setUltimos([]);
+            setReferralCode("");
+            setReferralsCount(0);
             setLoading(false);
           }
           return;
@@ -53,7 +62,7 @@ export default function DashboardPage() {
 
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("plan")
+          .select("plan, referral_code, referrals_count")
           .eq("id", user.id)
           .single();
 
@@ -64,6 +73,9 @@ export default function DashboardPage() {
         } else {
           setPlan("free");
         }
+
+        setReferralCode(profileData?.referral_code || "");
+        setReferralsCount(profileData?.referrals_count || 0);
 
         const { data, error } = await supabase
           .from("analyses")
@@ -92,6 +104,8 @@ export default function DashboardPage() {
           setPlan("free");
           setCount(0);
           setUltimos([]);
+          setReferralCode("");
+          setReferralsCount(0);
         }
       } finally {
         if (active) {
@@ -161,6 +175,17 @@ export default function DashboardPage() {
       console.error("Error en activarPro:", error);
     } finally {
       setCargandoPago(false);
+    }
+  }
+
+  async function copiarLinkReferido() {
+    try {
+      if (!referralLink) return;
+      await navigator.clipboard.writeText(referralLink);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch (error) {
+      console.error("No se pudo copiar el link:", error);
     }
   }
 
@@ -656,6 +681,108 @@ export default function DashboardPage() {
               Revisa tus análisis anteriores desde una sola pantalla.
             </span>
           </Link>
+        </div>
+      </section>
+
+      <section
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "16px",
+          padding: "28px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "18px",
+        }}
+      >
+        <h2 style={{ fontSize: "26px", margin: 0 }}>Invita y gana</h2>
+
+        <p style={{ color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
+          Comparte tu enlace personal con amigos o familiares. Más adelante
+          activaremos recompensas por cada persona que llegue con tu invitación.
+        </p>
+
+        <div
+          style={{
+            background: "#f9fafb",
+            border: "1px solid #e5e7eb",
+            borderRadius: "14px",
+            padding: "18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#374151",
+              fontWeight: 700,
+            }}
+          >
+            Tu enlace de referido
+          </div>
+
+          <input
+            value={referralLink}
+            readOnly
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: "10px",
+              border: "1px solid #d1d5db",
+              fontSize: "14px",
+              color: "#111827",
+              background: "#ffffff",
+              boxSizing: "border-box",
+            }}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <button
+              type="button"
+              onClick={copiarLinkReferido}
+              disabled={!referralLink}
+              style={{
+                background: referralLink ? "#1d4ed8" : "#93c5fd",
+                color: "#ffffff",
+                padding: "10px 14px",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: 700,
+                cursor: referralLink ? "pointer" : "not-allowed",
+              }}
+            >
+              {copiado ? "¡Copiado!" : "Copiar enlace"}
+            </button>
+
+            <span
+              style={{
+                fontSize: "14px",
+                color: "#6b7280",
+              }}
+            >
+              Referidos registrados: <strong>{referralsCount}</strong>
+            </span>
+          </div>
+
+          <div
+            style={{
+              fontSize: "13px",
+              color: "#6b7280",
+              lineHeight: 1.6,
+            }}
+          >
+            Tu invitación ayudará a otras personas a entender cartas importantes
+            en inglés con más claridad.
+          </div>
         </div>
       </section>
 

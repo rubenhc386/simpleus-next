@@ -5,6 +5,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+function generarCodigo() {
+  return Math.random().toString(36).substring(2, 8);
+}
+
 export default function RegistroPage() {
   const router = useRouter();
 
@@ -99,13 +103,60 @@ export default function RegistroPage() {
       setMensaje("");
       setRegistroExitoso(false);
 
-      const { error } = await supabase.auth.signUp({
+      const referralCode = localStorage.getItem("referral_code");
+
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) {
         setMensaje(error.message);
+        return;
+      }
+
+      const userId = data.user?.id;
+
+      if (!userId) {
+        setMensaje("No se pudo obtener el usuario recién creado.");
+        return;
+      }
+
+      let referredById: string | null = null;
+
+      if (referralCode) {
+        const { data: referralOwner, error: referralError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("referral_code", referralCode)
+          .maybeSingle();
+
+        if (!referralError && referralOwner?.id && referralOwner.id !== userId) {
+          referredById = referralOwner.id;
+        }
+      }
+
+      let nuevoCodigo = generarCodigo();
+
+      const { data: codigoExistente } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("referral_code", nuevoCodigo)
+        .maybeSingle();
+
+      if (codigoExistente?.id) {
+        nuevoCodigo = generarCodigo() + Math.floor(Math.random() * 10).toString();
+      }
+
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: userId,
+        plan: "free",
+        referral_code: nuevoCodigo,
+        referred_by: referredById,
+      });
+
+      if (profileError) {
+        setMensaje("La cuenta se creó, pero no se pudo completar el perfil.");
         return;
       }
 
