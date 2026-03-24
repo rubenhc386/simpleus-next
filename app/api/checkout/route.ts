@@ -71,6 +71,12 @@ export async function POST(req: Request) {
       );
     }
 
+    const body = await req.json().catch(() => ({}));
+    const referralCode =
+      typeof body?.referralCode === "string" ? body.referralCode : "";
+    const affiliateCode =
+      typeof body?.affiliateCode === "string" ? body.affiliateCode : "";
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -86,11 +92,15 @@ export async function POST(req: Request) {
       metadata: {
         userId: user.id,
         userEmail: user.email || "",
+        referralCode,
+        affiliateCode,
       },
       subscription_data: {
         metadata: {
           userId: user.id,
           userEmail: user.email || "",
+          referralCode,
+          affiliateCode,
         },
       },
     });

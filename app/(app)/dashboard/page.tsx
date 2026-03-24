@@ -255,6 +255,11 @@ export default function DashboardPage() {
         throw new Error("No se encontró una sesión activa.");
       }
 
+      const referralCodeFromStorage =
+        localStorage.getItem("referral_code") || "";
+      const affiliateCodeFromStorage =
+        localStorage.getItem("affiliate_code") || "";
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: {
@@ -262,6 +267,10 @@ export default function DashboardPage() {
           "Content-Type": "application/json",
         },
         cache: "no-store",
+        body: JSON.stringify({
+          referralCode: referralCodeFromStorage,
+          affiliateCode: affiliateCodeFromStorage,
+        }),
       });
 
       let data: any = null;
