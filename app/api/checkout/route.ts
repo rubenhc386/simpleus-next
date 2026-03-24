@@ -2,15 +2,52 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(req: Request) {
   try {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!stripeSecretKey) {
+      return NextResponse.json(
+        { error: "Falta STRIPE_SECRET_KEY en el servidor." },
+        { status: 500 }
+      );
+    }
+
+    if (!supabaseUrl) {
+      return NextResponse.json(
+        { error: "Falta NEXT_PUBLIC_SUPABASE_URL en el servidor." },
+        { status: 500 }
+      );
+    }
+
+    if (!supabaseServiceRoleKey) {
+      return NextResponse.json(
+        { error: "Falta SUPABASE_SERVICE_ROLE_KEY en el servidor." },
+        { status: 500 }
+      );
+    }
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: "Falta NEXT_PUBLIC_STRIPE_PRICE_ID en el servidor." },
+        { status: 500 }
+      );
+    }
+
+    if (!appUrl) {
+      return NextResponse.json(
+        { error: "Falta NEXT_PUBLIC_APP_URL en el servidor." },
+        { status: 500 }
+      );
+    }
+
+    const stripe = new Stripe(stripeSecretKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+
     const authHeader = req.headers.get("authorization");
 
     if (!authHeader?.startsWith("Bearer ")) {
@@ -31,23 +68,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "No se pudo identificar al usuario." },
         { status: 401 }
-      );
-    }
-
-    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-    if (!priceId) {
-      return NextResponse.json(
-        { error: "Falta NEXT_PUBLIC_STRIPE_PRICE_ID." },
-        { status: 500 }
-      );
-    }
-
-    if (!appUrl) {
-      return NextResponse.json(
-        { error: "Falta NEXT_PUBLIC_APP_URL." },
-        { status: 500 }
       );
     }
 
