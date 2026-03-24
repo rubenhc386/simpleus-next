@@ -103,6 +103,7 @@ export default function RegistroPage() {
       setMensaje("");
       setRegistroExitoso(false);
 
+      const affiliateCode = localStorage.getItem("affiliate_code");
       const referralCode = localStorage.getItem("referral_code");
 
       const { data, error } = await supabase.auth.signUp({
@@ -116,6 +117,7 @@ export default function RegistroPage() {
       }
 
       const userId = data.user?.id;
+      const userEmail = data.user?.email || email || null;
 
       if (!userId) {
         setMensaje("No se pudo obtener el usuario recién creado.");
@@ -123,8 +125,24 @@ export default function RegistroPage() {
       }
 
       let referredById: string | null = null;
+      let affiliateId: string | null = null;
 
-      if (referralCode) {
+      // PRIORIDAD 1: afiliado
+      if (affiliateCode) {
+        const { data: affiliateOwner, error: affiliateError } = await supabase
+          .from("profiles")
+          .select("id, is_affiliate, affiliate_code")
+          .eq("affiliate_code", affiliateCode)
+          .eq("is_affiliate", true)
+          .maybeSingle();
+
+        if (!affiliateError && affiliateOwner?.id && affiliateOwner.id !== userId) {
+          affiliateId = affiliateOwner.id;
+        }
+      }
+
+      // PRIORIDAD 2: referido normal solo si NO hubo afiliado
+      if (!affiliateId && referralCode) {
         const { data: referralOwner, error: referralError } = await supabase
           .from("profiles")
           .select("id")
@@ -153,63 +171,89 @@ export default function RegistroPage() {
           generarCodigo() + Math.floor(Math.random() * 10).toString();
       }
 
-const { error: profileError } = await supabase.from("profiles").upsert({
-  id: userId,
-  email: data.user?.email || email || null,
-  plan: "free",
-  referral_code: nuevoCodigo,
-  referred_by: referredById,
-  trial_started_at: new Date().toISOString(),
-});
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: userId,
+        email: userEmail,
+        plan: "free",
+        referral_code: nuevoCodigo,
+        referred_by: referredById,
+        trial_started_at: new Date().toISOString(),
+      });
 
       if (profileError) {
         setMensaje("La cuenta se creó, pero no se pudo completar el perfil.");
         return;
       }
 
-      if (referredById) {
-  const { error: referralIncrementError } = await supabase.rpc(
-    "increment_referrals",
-    {
-      user_id_input: referredById,
-    }
-  );
+      // Si llegó por afiliado, registrar conversión y NO aplicar referido normal
+      if (affiliateId) {
+        const { error: affiliateConversionError } = await supabase
+          .from("affiliate_conversions")
+          .insert({
+            affiliate_id: affiliateId,
+            user_id: userId,
+            user_email: userEmail,
+            status: "lead",
+          });
 
-  if (referralIncrementError) {
-    console.error(
-      "No se pudo incrementar referrals_count:",
-      referralIncrementError
-    );
-  }
+        if (affiliateConversionError) {
+          console.error(
+            "No se pudo crear affiliate_conversions:",
+            affiliateConversionError
+          );
+        }
 
-  const { error: inviterBonusError } = await supabase.rpc(
-    "add_bonus_analysis",
-    {
-      user_id_input: referredById,
-    }
-  );
+        localStorage.removeItem("affiliate_code");
+        localStorage.removeItem("referral_code");
+      }
 
-  if (inviterBonusError) {
-    console.error(
-      "No se pudo sumar bonus al invitador:",
-      inviterBonusError
-    );
-  }
+      // Si llegó por referido normal
+      if (referredById && !affiliateId) {
+        const { error: referralIncrementError } = await supabase.rpc(
+          "increment_referrals",
+          {
+            user_id_input: referredById,
+          }
+        );
 
-  const { error: invitedBonusError } = await supabase.rpc(
-    "add_bonus_analysis",
-    {
-      user_id_input: userId,
-    }
-  );
+        if (referralIncrementError) {
+          console.error(
+            "No se pudo incrementar referrals_count:",
+            referralIncrementError
+          );
+        }
 
-  if (invitedBonusError) {
-    console.error(
-      "No se pudo sumar bonus al invitado:",
-      invitedBonusError
-    );
-  }
-}
+        const { error: inviterBonusError } = await supabase.rpc(
+          "add_bonus_analysis",
+          {
+            user_id_input: referredById,
+          }
+        );
+
+        if (inviterBonusError) {
+          console.error(
+            "No se pudo sumar bonus al invitador:",
+            inviterBonusError
+          );
+        }
+
+        const { error: invitedBonusError } = await supabase.rpc(
+          "add_bonus_analysis",
+          {
+            user_id_input: userId,
+          }
+        );
+
+        if (invitedBonusError) {
+          console.error(
+            "No se pudo sumar bonus al invitado:",
+            invitedBonusError
+          );
+        }
+
+        localStorage.removeItem("referral_code");
+        localStorage.removeItem("affiliate_code");
+      }
 
       setRegistroExitoso(true);
       setMensaje(
