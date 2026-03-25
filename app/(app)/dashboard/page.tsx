@@ -42,6 +42,7 @@ export default function DashboardPage() {
 
   const [affiliateLeads, setAffiliateLeads] = useState(0);
   const [affiliatePaid, setAffiliatePaid] = useState(0);
+  const [affiliateRevenue, setAffiliateRevenue] = useState(0);
 
   const freeLimit = 3;
   const isPro = plan === "pro";
@@ -53,6 +54,8 @@ export default function DashboardPage() {
     : isTrialActive
     ? freeLimit + bonusAnalyses
     : bonusAnalyses;
+
+  const affiliateCommission = affiliateRevenue * 0.3;
 
   const progressPercent = useMemo(() => {
     if (plan === "pro") return 100;
@@ -108,6 +111,7 @@ export default function DashboardPage() {
             setTrialStartedAt(null);
             setAffiliateLeads(0);
             setAffiliatePaid(0);
+            setAffiliateRevenue(0);
             setLoading(false);
           }
           return;
@@ -181,9 +185,31 @@ export default function DashboardPage() {
           } else {
             setAffiliatePaid(paidCount || 0);
           }
+
+          const { data: salesData, error: salesError } = await supabase
+            .from("affiliate_sales")
+            .select("amount")
+            .eq("affiliate_code", affCode)
+            .eq("status", "paid");
+
+          if (salesError) {
+            console.error("Error cargando ventas del afiliado:", salesError);
+            setAffiliateRevenue(0);
+          } else {
+            const total = (salesData ?? []).reduce((acc, row) => {
+              const amount =
+                typeof row.amount === "number"
+                  ? row.amount
+                  : Number(row.amount || 0);
+              return acc + (Number.isFinite(amount) ? amount : 0);
+            }, 0);
+
+            setAffiliateRevenue(total);
+          }
         } else {
           setAffiliateLeads(0);
           setAffiliatePaid(0);
+          setAffiliateRevenue(0);
         }
 
         const { data, error } = await supabase
@@ -222,6 +248,7 @@ export default function DashboardPage() {
           setTrialStartedAt(null);
           setAffiliateLeads(0);
           setAffiliatePaid(0);
+          setAffiliateRevenue(0);
         }
       } finally {
         if (active) {
@@ -449,6 +476,34 @@ export default function DashboardPage() {
               <strong>Usuarios PRO</strong>
               <p style={{ margin: "10px 0 0 0", color: "#374151" }}>
                 {affiliatePaid}
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Total generado</strong>
+              <p style={{ margin: "10px 0 0 0", color: "#374151" }}>
+                ${affiliateRevenue.toFixed(2)} USD
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "14px",
+                padding: "18px",
+              }}
+            >
+              <strong>Tu comisión (30%)</strong>
+              <p style={{ margin: "10px 0 0 0", color: "#374151" }}>
+                ${affiliateCommission.toFixed(2)} USD
               </p>
             </div>
           </div>
