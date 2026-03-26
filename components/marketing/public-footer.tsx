@@ -239,7 +239,7 @@ export default function PublicFooter() {
                 margin: 0,
               }}
             >
-              Proyecto creado por RubenHC.
+              Proyecto creado por RubenHC3_
               <br />
               Próximamente: soporte, ayuda y recursos adicionales.
             </p>
@@ -258,7 +258,7 @@ export default function PublicFooter() {
             fontSize: "14px",
           }}
         >
-          <span>©️ 2026 SimpleUS by RubenHC3_. Todos los derechos reservados.</span>
+          <span>©️ 2026 SimpleUS by RubenHC3_ Todos los derechos reservados.</span>
 
           <span>Hecho para nuestra comunidad hispana en EE.UU.</span>
         </div>
