@@ -199,7 +199,7 @@ export default function Page() {
                 padding: "18px",
               }}
             >
-              <strong>Construido por RubenHC</strong>
+              <strong>Construido por RubenHC3_</strong>
               <p style={{ color: "#4b5563", lineHeight: 1.7, marginTop: "8px" }}>
                 Detrás del proyecto hay una visión real de ayudar a la comunidad
                 hispana con tecnología útil y cercana.
@@ -577,7 +577,7 @@ export default function Page() {
           }}
         >
           <h2 style={{ fontSize: "28px", marginBottom: "14px" }}>
-            Creado por RubenHC
+            Creado por RubenHC3_
           </h2>
 
           <p
@@ -589,7 +589,7 @@ export default function Page() {
           >
             SimpleUS nace con una misión simple: ayudar a nuestra comunidad hispana
             en Estados Unidos a entender cartas importantes sin sentirse perdida.
-            Detrás del proyecto está RubenHC, ingeniero mexicano en sistemas y
+            Detrás del proyecto está RubenHC3_, ingeniero mexicano en sistemas y
             creador que quiere construir herramientas claras, humanas y útiles para
             la vida diaria.
           </p>
