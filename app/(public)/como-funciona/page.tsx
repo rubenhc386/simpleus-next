@@ -1,8 +1,45 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import PublicNavbar from "@/components/marketing/public-navbar";
 import PublicFooter from "@/components/marketing/public-footer";
 
 export default function ComoFuncionaPage() {
+  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      setIsLoggedIn(!!session?.user);
+      setLoading(false);
+    }
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
+      if (!active) return;
+      setIsLoggedIn(!!session?.user);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <>
       <PublicNavbar />
@@ -210,6 +247,14 @@ export default function ComoFuncionaPage() {
               </p>
             </div>
 
+            <div>
+              <strong>Checklist recomendado</strong>
+              <p style={{ color: "#6b7280", lineHeight: 1.7, marginTop: "8px" }}>
+                Muy pronto el Mapa SimpleUS incluirá un checklist claro de cosas por
+                revisar o completar para ayudarte a tomar acción con más orden.
+              </p>
+            </div>
+
             <div
               style={{
                 background: "#eff6ff",
@@ -291,34 +336,69 @@ export default function ComoFuncionaPage() {
               flexWrap: "wrap",
             }}
           >
-            <Link
-              href="/registro"
-              style={{
-                background: "#1d4ed8",
-                color: "white",
-                padding: "14px 20px",
-                borderRadius: "10px",
-                textDecoration: "none",
-                fontWeight: 600,
-              }}
-            >
-              Crear cuenta gratis
-            </Link>
+            {loading ? null : isLoggedIn ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  style={{
+                    background: "#1d4ed8",
+                    color: "white",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Ir al dashboard
+                </Link>
 
-            <Link
-              href="/login"
-              style={{
-                border: "1px solid #d1d5db",
-                padding: "14px 20px",
-                borderRadius: "10px",
-                textDecoration: "none",
-                fontWeight: 600,
-                color: "#111827",
-                background: "#ffffff",
-              }}
-            >
-              Iniciar sesión
-            </Link>
+                <Link
+                  href="/dashboard/analizar"
+                  style={{
+                    border: "1px solid #d1d5db",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    color: "#111827",
+                    background: "#ffffff",
+                  }}
+                >
+                  Analizar una carta
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/registro"
+                  style={{
+                    background: "#1d4ed8",
+                    color: "white",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Crear cuenta gratis
+                </Link>
+
+                <Link
+                  href="/login"
+                  style={{
+                    border: "1px solid #d1d5db",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    color: "#111827",
+                    background: "#ffffff",
+                  }}
+                >
+                  Iniciar sesión
+                </Link>
+              </>
+            )}
           </div>
         </section>
       </div>

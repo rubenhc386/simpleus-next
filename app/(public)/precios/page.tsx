@@ -1,8 +1,45 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import PublicNavbar from "@/components/marketing/public-navbar";
 import PublicFooter from "@/components/marketing/public-footer";
 
 export default function PreciosPage() {
+  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      setIsLoggedIn(!!session?.user);
+      setLoading(false);
+    }
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
+      if (!active) return;
+      setIsLoggedIn(!!session?.user);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <>
       <PublicNavbar />
@@ -70,7 +107,6 @@ export default function PreciosPage() {
             gap: "20px",
           }}
         >
-          {/* FREE */}
           <div
             style={{
               background: "#ffffff",
@@ -113,26 +149,45 @@ export default function PreciosPage() {
               <li>Acceso inicial al producto</li>
             </ul>
 
-            <Link
-              href="/registro"
-              style={{
-                marginTop: "8px",
-                display: "inline-block",
-                textAlign: "center",
-                background: "#ffffff",
-                color: "#111827",
-                border: "1px solid #d1d5db",
-                padding: "12px 16px",
-                borderRadius: "10px",
-                textDecoration: "none",
-                fontWeight: 600,
-              }}
-            >
-              Empezar gratis
-            </Link>
+            {loading ? null : isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                style={{
+                  marginTop: "8px",
+                  display: "inline-block",
+                  textAlign: "center",
+                  background: "#ffffff",
+                  color: "#111827",
+                  border: "1px solid #d1d5db",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Ir al dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/registro"
+                style={{
+                  marginTop: "8px",
+                  display: "inline-block",
+                  textAlign: "center",
+                  background: "#ffffff",
+                  color: "#111827",
+                  border: "1px solid #d1d5db",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Empezar gratis
+              </Link>
+            )}
           </div>
 
-          {/* PRO */}
           <div
             style={{
               background: "#eff6ff",
@@ -195,22 +250,41 @@ export default function PreciosPage() {
               <li>Más claridad y continuidad en tu cuenta</li>
             </ul>
 
-            <Link
-              href="/registro"
-              style={{
-                marginTop: "8px",
-                display: "inline-block",
-                textAlign: "center",
-                background: "#1d4ed8",
-                color: "#ffffff",
-                padding: "12px 16px",
-                borderRadius: "10px",
-                textDecoration: "none",
-                fontWeight: 700,
-              }}
-            >
-              Crear cuenta
-            </Link>
+            {loading ? null : isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                style={{
+                  marginTop: "8px",
+                  display: "inline-block",
+                  textAlign: "center",
+                  background: "#1d4ed8",
+                  color: "#ffffff",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: 700,
+                }}
+              >
+                Ir a mi cuenta
+              </Link>
+            ) : (
+              <Link
+                href="/registro"
+                style={{
+                  marginTop: "8px",
+                  display: "inline-block",
+                  textAlign: "center",
+                  background: "#1d4ed8",
+                  color: "#ffffff",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: 700,
+                }}
+              >
+                Crear cuenta
+              </Link>
+            )}
           </div>
         </section>
 
@@ -282,34 +356,69 @@ export default function PreciosPage() {
               flexWrap: "wrap",
             }}
           >
-            <Link
-              href="/registro"
-              style={{
-                background: "#1d4ed8",
-                color: "white",
-                padding: "14px 20px",
-                borderRadius: "10px",
-                textDecoration: "none",
-                fontWeight: 600,
-              }}
-            >
-              Crear cuenta gratis
-            </Link>
+            {loading ? null : isLoggedIn ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  style={{
+                    background: "#1d4ed8",
+                    color: "white",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Ir al dashboard
+                </Link>
 
-            <Link
-              href="/login"
-              style={{
-                border: "1px solid #d1d5db",
-                padding: "14px 20px",
-                borderRadius: "10px",
-                textDecoration: "none",
-                fontWeight: 600,
-                color: "#111827",
-                background: "#ffffff",
-              }}
-            >
-              Iniciar sesión
-            </Link>
+                <Link
+                  href="/dashboard/historial"
+                  style={{
+                    border: "1px solid #d1d5db",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    color: "#111827",
+                    background: "#ffffff",
+                  }}
+                >
+                  Ver historial
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/registro"
+                  style={{
+                    background: "#1d4ed8",
+                    color: "white",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Crear cuenta gratis
+                </Link>
+
+                <Link
+                  href="/login"
+                  style={{
+                    border: "1px solid #d1d5db",
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    color: "#111827",
+                    background: "#ffffff",
+                  }}
+                >
+                  Iniciar sesión
+                </Link>
+              </>
+            )}
           </div>
         </section>
       </div>

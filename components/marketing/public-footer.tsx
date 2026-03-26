@@ -1,6 +1,48 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function PublicFooter() {
+  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      setIsLoggedIn(!!session?.user);
+      setLoading(false);
+    }
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
+      if (!active) return;
+      setIsLoggedIn(!!session?.user);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function cerrarSesion() {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }
+
   return (
     <footer
       style={{
@@ -99,25 +141,59 @@ export default function PublicFooter() {
                 Precios
               </Link>
 
-              <Link
-                href="/login"
-                style={{
-                  color: "#4b5563",
-                  textDecoration: "none",
-                }}
-              >
-                Iniciar sesión
-              </Link>
+              {!loading &&
+                (isLoggedIn ? (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      style={{
+                        color: "#4b5563",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Ir al dashboard
+                    </Link>
 
-              <Link
-                href="/registro"
-                style={{
-                  color: "#4b5563",
-                  textDecoration: "none",
-                }}
-              >
-                Crear cuenta
-              </Link>
+                    <button
+                      type="button"
+                      onClick={cerrarSesion}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        margin: 0,
+                        textAlign: "left",
+                        color: "#4b5563",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                      }}
+                    >
+                      Cerrar sesión
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      style={{
+                        color: "#4b5563",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Iniciar sesión
+                    </Link>
+
+                    <Link
+                      href="/registro"
+                      style={{
+                        color: "#4b5563",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Crear cuenta
+                    </Link>
+                  </>
+                ))}
             </div>
           </div>
 
