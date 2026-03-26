@@ -6,6 +6,7 @@ type ParsedAnalysis = {
   significado: string;
   urgencia: string;
   pasos: string[];
+  checklist: string[];
   calma: string;
   modo?: string;
 };
@@ -119,6 +120,7 @@ Tu tarea es analizar el texto de una carta y devolver solamente JSON válido con
   "significado": "Qué significa en palabras simples",
   "urgencia": "Baja, Media o Alta",
   "pasos": ["Paso 1", "Paso 2", "Paso 3"],
+  "checklist": ["Acción concreta 1", "Acción concreta 2"],
   "calma": "Mensaje de calma y orientación",
   "modo": "real"
 }
@@ -129,6 +131,8 @@ Reglas:
 - No inventes hechos que no estén sustentados por el texto.
 - Si el texto es ambiguo, dilo con honestidad.
 - El campo "pasos" debe ser un arreglo de 3 a 5 pasos concretos.
+- El campo "checklist" debe ser una lista simple de tareas concretas, tipo lista para completar.
+- El checklist debe tener entre 3 y 6 elementos.
 - El tono debe ser claro, humano y calmado.
 - Devuelve solamente JSON válido, sin texto extra.
 
@@ -166,18 +170,19 @@ ${texto}
       );
     }
 
-    const { error: insertError } = await supabaseAdmin.from("analyses").insert([
-      {
-        user_id: userId,
-        original_text: texto,
-        tipo: parsed.tipo,
-        significado: parsed.significado,
-        urgencia: parsed.urgencia,
-        pasos: parsed.pasos,
-        calma: parsed.calma,
-        modo: parsed.modo ?? "real",
-      },
-    ]);
+const { error: insertError } = await supabaseAdmin.from("analyses").insert([
+  {
+    user_id: userId,
+    original_text: texto,
+    tipo: parsed.tipo,
+    significado: parsed.significado,
+    urgencia: parsed.urgencia,
+    pasos: parsed.pasos,
+    checklist: parsed.checklist ?? [],
+    calma: parsed.calma,
+    modo: parsed.modo ?? "real",
+  },
+]);
 
     if (insertError) {
       console.error(

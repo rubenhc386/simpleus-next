@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import ChecklistBox from "@/components/ChecklistBox";
 
 type ResultadoMapa = {
   tipo: string;
   significado: string;
   urgencia: string;
   pasos: string[];
+  checklist?: string[];
   calma: string;
   modo?: string;
 };
@@ -497,6 +499,8 @@ export default function PdfPage() {
               ))}
             </ul>
           </div>
+
+          <ChecklistBox items={resultado.checklist} />
 
           <div
             style={{

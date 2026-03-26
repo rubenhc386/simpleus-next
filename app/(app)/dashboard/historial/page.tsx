@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import ChecklistBox from "@/components/ChecklistBox";
 
 type AnalysisRow = {
   id: string;
@@ -11,6 +12,7 @@ type AnalysisRow = {
   significado: string | null;
   urgencia: string | null;
   pasos: string[] | null;
+  checklist: string[] | null;
   calma: string | null;
   original_text: string | null;
   modo: string | null;
@@ -83,7 +85,7 @@ export default function HistorialPage() {
       const { data, error: dbError } = await supabase
         .from("analyses")
         .select(
-          "id, created_at, tipo, significado, urgencia, pasos, calma, original_text, modo, user_id"
+          "id, created_at, tipo, significado, urgencia, pasos, checklist, calma, original_text, modo, user_id"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -140,8 +142,7 @@ export default function HistorialPage() {
     cargarHistorial();
   }, []);
 
-  const hasHiddenItems =
-    plan === "free" && totalItems > FREE_HISTORY_LIMIT;
+  const hasHiddenItems = plan === "free" && totalItems > FREE_HISTORY_LIMIT;
 
   return (
     <div
@@ -374,6 +375,8 @@ export default function HistorialPage() {
                     </p>
                   )}
                 </div>
+
+                <ChecklistBox items={item.checklist} />
 
                 <div
                   style={{
