@@ -19,7 +19,7 @@ function calcularDiasRestantes(trialStartedAt: string | null) {
   const ahora = Date.now();
   const diffMs = ahora - inicio;
   const diffDias = diffMs / (1000 * 60 * 60 * 24);
-  const restantes = Math.ceil(3 - diffDias);
+  const restantes = Math.ceil(7 - diffDias);
 
   return Math.max(restantes, 0);
 }
@@ -44,25 +44,21 @@ export default function DashboardPage() {
   const [affiliatePaid, setAffiliatePaid] = useState(0);
   const [affiliateRevenue, setAffiliateRevenue] = useState(0);
 
-  const freeLimit = 3;
   const isPro = plan === "pro";
   const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
-  const isTrialActive = isPro || trialDaysRemaining > 0;
-
-  const realFreeLimit = isPro
-    ? Number.MAX_SAFE_INTEGER
-    : isTrialActive
-    ? freeLimit + bonusAnalyses
-    : bonusAnalyses;
+  const isTrialActive = trialDaysRemaining > 0;
+  const bonusRemaining = Math.max(bonusAnalyses - count, 0);
 
   const affiliateCommission = affiliateRevenue * 0.3;
 
   const progressPercent = useMemo(() => {
     if (plan === "pro") return 100;
-    const total = Math.max(realFreeLimit, 1);
-    const used = Math.min(count, total);
-    return Math.round((used / total) * 100);
-  }, [count, plan, realFreeLimit]);
+    if (isTrialActive) return 100;
+    if (bonusAnalyses <= 0) return 0;
+
+    const usedBonus = Math.min(count, bonusAnalyses);
+    return Math.round((usedBonus / bonusAnalyses) * 100);
+  }, [count, plan, isTrialActive, bonusAnalyses]);
 
   const referralLink = isAffiliate
     ? affiliateCode
@@ -553,7 +549,7 @@ export default function DashboardPage() {
           <>
             <h2 style={{ margin: 0, fontSize: "28px", color: "#111827" }}>
               {isTrialActive
-                ? "Tu prueba gratuita está corriendo"
+                ? "Tu prueba gratuita está activa"
                 : "Tu prueba gratuita terminó"}
             </h2>
 
@@ -566,25 +562,48 @@ export default function DashboardPage() {
               }}
             >
               {isTrialActive
-                ? `Tienes ${trialDaysRemaining} día${
+                ? `Tu prueba gratuita de 7 días sigue activa. Te quedan ${trialDaysRemaining} día${
                     trialDaysRemaining === 1 ? "" : "s"
-                  } restantes para usar tus análisis base.`
-                : "Ya no tienes análisis base activos. Ahora solo puedes seguir usando SimpleUS con referidos o pasando a PRO."}
+                  } con análisis ilimitados.`
+                : "Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir usando análisis ganados por referidos o pasar a PRO para continuar sin restricciones."}
             </p>
 
-            <p
-              style={{
-                margin: 0,
-                lineHeight: 1.7,
-                color: "#7c2d12",
-                maxWidth: "820px",
-              }}
-            >
-              Ya usaste {Math.min(count, realFreeLimit)} de {realFreeLimit} análisis
-              disponibles.
-            </p>
+            {isTrialActive ? (
+              <p
+                style={{
+                  margin: 0,
+                  lineHeight: 1.7,
+                  color: "#7c2d12",
+                  maxWidth: "820px",
+                }}
+              >
+                Durante tu prueba puedes analizar cartas sin límite.
+              </p>
+            ) : bonusAnalyses > 0 ? (
+              <p
+                style={{
+                  margin: 0,
+                  lineHeight: 1.7,
+                  color: "#7c2d12",
+                  maxWidth: "820px",
+                }}
+              >
+                Tienes <strong>{bonusRemaining}</strong> de <strong>{bonusAnalyses}</strong> análisis extra disponibles por referidos.
+              </p>
+            ) : (
+              <p
+                style={{
+                  margin: 0,
+                  lineHeight: 1.7,
+                  color: "#7c2d12",
+                  maxWidth: "820px",
+                }}
+              >
+                En este momento no tienes análisis extra disponibles.
+              </p>
+            )}
 
-            {bonusAnalyses > 0 && (
+            {!isTrialActive && bonusAnalyses > 0 && (
               <div
                 style={{
                   fontSize: "14px",
@@ -632,7 +651,11 @@ export default function DashboardPage() {
                   color: "#9a3412",
                 }}
               >
-                {Math.min(count, realFreeLimit)} / {realFreeLimit} análisis usados
+                {isTrialActive
+                  ? "Prueba activa · análisis ilimitados"
+                  : bonusAnalyses > 0
+                  ? `${Math.max(count, 0)} análisis totales guardados · ${bonusRemaining} análisis extra disponibles`
+                  : "Prueba finalizada"}
               </div>
             </div>
 

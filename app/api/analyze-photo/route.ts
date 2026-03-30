@@ -18,7 +18,7 @@ function calcularDiasRestantes(trialStartedAt: string | null) {
   const ahora = Date.now();
   const diffMs = ahora - inicio;
   const diffDias = diffMs / (1000 * 60 * 60 * 24);
-  const restantes = Math.ceil(3 - diffDias);
+  const restantes = Math.ceil(7 - diffDias);
 
   return Math.max(restantes, 0);
 }
@@ -74,14 +74,7 @@ export async function POST(req: Request) {
     const bonusAnalyses = profileData?.bonus_analyses ?? 0;
     const trialStartedAt = profileData?.trial_started_at ?? null;
     const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
-    const isTrialActive = isPro || trialDaysRemaining > 0;
-
-    const freeLimit = 3;
-    const realFreeLimit = isPro
-      ? Number.MAX_SAFE_INTEGER
-      : isTrialActive
-      ? freeLimit + bonusAnalyses
-      : bonusAnalyses;
+    const isTrialActive = trialDaysRemaining > 0;
 
     const { count, error: countError } = await supabaseAdmin
       .from("analyses")
@@ -98,13 +91,16 @@ export async function POST(req: Request) {
 
     const currentCount = count ?? 0;
 
-    if (!isPro && currentCount >= realFreeLimit) {
+    const canAnalyze =
+      isPro || isTrialActive || bonusAnalyses > currentCount;
+
+    if (!canAnalyze) {
       return Response.json(
         {
-          error: isTrialActive
-            ? "Has llegado al límite disponible de tu plan actual."
-            : "Tu prueba gratuita terminó. Solo puedes seguir con análisis ganados por referidos o activando PRO.",
+          error:
+            "Tu prueba gratuita de 7 días ya terminó. Ahora solo puedes seguir con análisis ganados por referidos o activando PRO.",
           limitReached: true,
+          trialEnded: true,
         },
         { status: 403 }
       );
@@ -178,19 +174,21 @@ Reglas:
       );
     }
 
-const { error: insertError } = await supabaseAdmin.from("analyses").insert([
-  {
-    user_id: userId,
-    original_text: "[análisis desde foto]",
-    tipo: parsed.tipo,
-    significado: parsed.significado,
-    urgencia: parsed.urgencia,
-    pasos: parsed.pasos,
-    checklist: parsed.checklist ?? [],
-    calma: parsed.calma,
-    modo: parsed.modo ?? "real",
-  },
-]);
+    const { error: insertError } = await supabaseAdmin
+      .from("analyses")
+      .insert([
+        {
+          user_id: userId,
+          original_text: "[análisis desde foto]",
+          tipo: parsed.tipo,
+          significado: parsed.significado,
+          urgencia: parsed.urgencia,
+          pasos: parsed.pasos,
+          checklist: parsed.checklist ?? [],
+          calma: parsed.calma,
+          modo: parsed.modo ?? "real",
+        },
+      ]);
 
     if (insertError) {
       console.error(

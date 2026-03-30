@@ -41,6 +41,18 @@ function getUrgenciaStyles(urgencia: string) {
   };
 }
 
+function calcularDiasRestantes(trialStartedAt: string | null) {
+  if (!trialStartedAt) return 0;
+
+  const inicio = new Date(trialStartedAt).getTime();
+  const ahora = Date.now();
+  const diffMs = ahora - inicio;
+  const diffDias = diffMs / (1000 * 60 * 60 * 24);
+  const restantes = Math.ceil(7 - diffDias);
+
+  return Math.max(restantes, 0);
+}
+
 export default function Page() {
   const [texto, setTexto] = useState("");
   const [resultado, setResultado] = useState<ResultadoMapa | null>(null);
@@ -50,11 +62,18 @@ export default function Page() {
   const [analysisCount, setAnalysisCount] = useState(0);
   const [plan, setPlan] = useState<"free" | "pro">("free");
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
+  const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
-  const freeLimit = 3;
-  const realFreeLimit = freeLimit + bonusAnalyses;
   const isPro = plan === "pro";
-  const isBlocked = !isPro && analysisCount >= realFreeLimit;
+  const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
+  const isTrialActive = trialDaysRemaining > 0;
+
+  const bonusRemaining = Math.max(bonusAnalyses - analysisCount, 0);
+
+  const isBlocked =
+    !isPro &&
+    !isTrialActive &&
+    bonusRemaining <= 0;
 
   async function cargarConteoYPlan() {
     const {
@@ -64,6 +83,7 @@ export default function Page() {
     if (!user) {
       setPlan("free");
       setBonusAnalyses(0);
+      setTrialStartedAt(null);
       setAnalysisCount(0);
       setLimitReached(false);
       return;
@@ -71,16 +91,18 @@ export default function Page() {
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("plan, bonus_analyses")
+      .select("plan, bonus_analyses, trial_started_at")
       .eq("id", user.id)
       .maybeSingle();
 
     const nextPlan =
       !profileError && profileData?.plan === "pro" ? "pro" : "free";
     const nextBonus = profileData?.bonus_analyses ?? 0;
+    const nextTrialStartedAt = profileData?.trial_started_at ?? null;
 
     setPlan(nextPlan);
     setBonusAnalyses(nextBonus);
+    setTrialStartedAt(nextTrialStartedAt);
 
     const { count, error: countError } = await supabase
       .from("analyses")
@@ -95,10 +117,14 @@ export default function Page() {
     const nextCount = count ?? 0;
     setAnalysisCount(nextCount);
 
+    const nextTrialDaysRemaining = calcularDiasRestantes(nextTrialStartedAt);
+    const nextTrialActive = nextTrialDaysRemaining > 0;
+    const nextBonusRemaining = Math.max(nextBonus - nextCount, 0);
+
     if (nextPlan === "pro") {
       setLimitReached(false);
     } else {
-      setLimitReached(nextCount >= freeLimit + nextBonus);
+      setLimitReached(!nextTrialActive && nextBonusRemaining <= 0);
     }
   }
 
@@ -236,17 +262,56 @@ export default function Page() {
         >
           {isPro ? (
             <>Plan <strong>PRO activo</strong></>
-          ) : (
+          ) : isTrialActive ? (
             <>
-              Plan gratuito: {analysisCount} de {realFreeLimit} análisis usados
+              Plan gratuito: <strong>prueba activa</strong> · análisis ilimitados
+              por {trialDaysRemaining} día{trialDaysRemaining === 1 ? "" : "s"}
               {bonusAnalyses > 0 && (
                 <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
-                  (+{bonusAnalyses} de regalo por referidos)
+                  (+{bonusAnalyses} análisis extra acumulados por referidos para
+                  después de la prueba)
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              Plan gratuito: <strong>prueba finalizada</strong>
+              {bonusAnalyses > 0 && (
+                <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
+                  · {bonusRemaining} de {bonusAnalyses} análisis extra disponibles
+                  por referidos
                 </span>
               )}
             </>
           )}
         </div>
+
+        {!isPro && (
+          <div
+            style={{
+              background: isTrialActive ? "#eff6ff" : "#fff7ed",
+              border: isTrialActive ? "1px solid #bfdbfe" : "1px solid #fdba74",
+              borderRadius: "12px",
+              padding: "14px 16px",
+              color: isTrialActive ? "#1e3a8a" : "#9a3412",
+              lineHeight: 1.6,
+            }}
+          >
+            {isTrialActive ? (
+              <>
+                Tu prueba gratuita de <strong>7 días</strong> sigue activa.
+                Durante este periodo puedes analizar cartas <strong>sin límite</strong>.
+              </>
+            ) : (
+              <>
+                Tu prueba gratuita de <strong>7 días</strong> ya terminó.
+                Durante ese tiempo podías analizar cartas sin límite. Ahora puedes
+                seguir usando SimpleUS con análisis ganados por referidos o activar
+                <strong> PRO</strong> para continuar sin restricciones.
+              </>
+            )}
+          </div>
+        )}
 
         {isBlocked && !isPro && (
           <div
@@ -259,8 +324,8 @@ export default function Page() {
               lineHeight: 1.6,
             }}
           >
-            Ya alcanzaste tu límite actual del plan gratuito. Para seguir
-            analizando cartas, necesitaremos activar SimpleUS Pro.
+            Ya no tienes análisis disponibles en tu plan actual. Para seguir
+            analizando cartas, puedes invitar personas o activar SimpleUS Pro.
           </div>
         )}
 
@@ -307,7 +372,7 @@ export default function Page() {
             }}
           >
             {isBlocked
-              ? "Límite alcanzado"
+              ? "Acceso bloqueado"
               : cargando
               ? "Analizando..."
               : "Analizar carta"}
@@ -346,12 +411,31 @@ export default function Page() {
             gap: "20px",
           }}
         >
-          <h2 style={{ margin: 0 }}>Has llegado al límite de tu plan gratuito</h2>
+          <h2 style={{ margin: 0 }}>
+            {isTrialActive
+              ? "Tu prueba gratuita sigue activa"
+              : "Tu prueba gratuita ya terminó"}
+          </h2>
 
           <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
-            Ya utilizaste tus <strong>{realFreeLimit} análisis disponibles</strong>.
-            Puedes actualizar a <strong>SimpleUS Pro</strong> para seguir
-            analizando cartas sin límite.
+            {isTrialActive ? (
+              <>
+                Durante tu prueba gratuita de 7 días puedes analizar cartas
+                sin límite.
+              </>
+            ) : bonusAnalyses > 0 ? (
+              <>
+                Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir usando
+                tus <strong>{bonusRemaining}</strong> análisis ganados por referidos
+                o actualizar a <strong>SimpleUS Pro</strong>.
+              </>
+            ) : (
+              <>
+                Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir usando
+                análisis ganados por referidos o actualizar a
+                <strong> SimpleUS Pro</strong>.
+              </>
+            )}
           </p>
 
           <div
@@ -370,8 +454,9 @@ export default function Page() {
             >
               <strong>Plan gratuito</strong>
               <ul style={{ marginTop: "10px", lineHeight: 1.8 }}>
-                <li>{realFreeLimit} análisis disponibles</li>
-                <li>Subir texto</li>
+                <li>Prueba de 7 días</li>
+                <li>Análisis ilimitados durante la prueba</li>
+                <li>Análisis extra por referidos después de la prueba</li>
                 <li>Historial básico</li>
               </ul>
             </div>
@@ -577,8 +662,9 @@ export default function Page() {
                     color: "#111827",
                   }}
                 >
-                  ¿Y si la próxima carta llega cuando ya no tengas análisis
-                  disponibles?
+                  {isTrialActive
+                    ? "Aprovecha tu prueba gratuita de 7 días"
+                    : "Tu prueba gratuita ya terminó"}
                 </h3>
 
                 <p
@@ -589,8 +675,9 @@ export default function Page() {
                     maxWidth: "820px",
                   }}
                 >
-                  SimpleUS PRO te ayuda a seguir entendiendo cartas importantes
-                  sin límite y con más claridad cuando más lo necesitas.
+                  {isTrialActive
+                    ? "Durante tu prueba puedes analizar cartas sin límite. Después, podrás seguir con análisis ganados por referidos o activar PRO para continuar sin restricciones."
+                    : "SimpleUS PRO te ayuda a seguir entendiendo cartas importantes sin límite y con más claridad cuando más lo necesitas."}
                 </p>
 
                 <div
