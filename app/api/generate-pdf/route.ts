@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 const PDFDocument = require("pdfkit");
 
 export async function POST(req: Request) {
@@ -6,52 +8,89 @@ export async function POST(req: Request) {
 
     const { tipo, significado, urgencia, pasos, checklist, calma } = data;
 
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({
+      margin: 50,
+      size: "A4",
+    });
 
-    const chunks: Uint8Array[] = [];
+    const chunks: Buffer[] = [];
 
-    doc.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+    doc.on("data", (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
 
-    const endPromise = new Promise<Buffer>((resolve) => {
+    const endPromise = new Promise<Buffer>((resolve, reject) => {
       doc.on("end", () => {
         resolve(Buffer.concat(chunks));
       });
+
+      doc.on("error", (err: Error) => {
+        reject(err);
+      });
     });
 
-    doc.fontSize(20).text("Mapa SimpleUS", { align: "center" }).moveDown();
+    doc
+      .fontSize(20)
+      .text("Mapa SimpleUS", { align: "center" })
+      .moveDown();
 
-    doc.fontSize(12).text(`Fecha: ${new Date().toLocaleDateString()}`);
-    doc.moveDown();
+    doc
+      .fontSize(11)
+      .fillColor("#444444")
+      .text(`Fecha: ${new Date().toLocaleDateString()}`)
+      .moveDown();
 
-    doc.fontSize(14).text("Qué es esta carta:", { underline: true });
+    doc.fillColor("#000000").fontSize(14).text("Qué es esta carta:", {
+      underline: true,
+    });
+    doc.moveDown(0.3);
     doc.fontSize(12).text(tipo || "");
     doc.moveDown();
 
-    doc.fontSize(14).text("Qué significa:", { underline: true });
+    doc.fontSize(14).text("Qué significa:", {
+      underline: true,
+    });
+    doc.moveDown(0.3);
     doc.fontSize(12).text(significado || "");
     doc.moveDown();
 
-    doc.fontSize(14).text("Nivel de urgencia:", { underline: true });
+    doc.fontSize(14).text("Nivel de urgencia:", {
+      underline: true,
+    });
+    doc.moveDown(0.3);
     doc.fontSize(12).text(urgencia || "");
     doc.moveDown();
 
-    doc.fontSize(14).text("Qué podrías hacer:", { underline: true });
-    (pasos || []).forEach((p: string, i: number) => {
-      doc.text(`${i + 1}. ${p}`);
+    doc.fontSize(14).text("Qué podrías hacer:", {
+      underline: true,
     });
+    doc.moveDown(0.3);
+
+    (pasos || []).forEach((paso: string, index: number) => {
+      doc.fontSize(12).text(`${index + 1}. ${paso}`);
+    });
+
     doc.moveDown();
 
     if (checklist && checklist.length > 0) {
-      doc.fontSize(14).text("Checklist recomendado:", { underline: true });
-      checklist.forEach((c: string) => {
-        doc.text(`☐ ${c}`);
+      doc.fontSize(14).text("Checklist recomendado:", {
+        underline: true,
       });
+      doc.moveDown(0.3);
+
+      checklist.forEach((item: string) => {
+        doc.fontSize(12).text(`[ ] ${item}`);
+      });
+
       doc.moveDown();
     }
 
-    doc.fontSize(14).text("Mensaje de calma:", { underline: true });
+    doc.fontSize(14).text("Mensaje de calma:", {
+      underline: true,
+    });
+    doc.moveDown(0.3);
     doc.fontSize(12).text(calma || "");
-    doc.moveDown();
+    doc.moveDown(2);
 
     doc
       .fontSize(10)
@@ -63,19 +102,24 @@ export async function POST(req: Request) {
     doc.end();
 
     const pdfBuffer = await endPromise;
-    const pdfBytes = new Uint8Array(pdfBuffer);
 
-    return new Response(pdfBytes, {
+    return new Response(pdfBuffer as unknown as BodyInit, {
+      status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": "attachment; filename=mapa-simpleus.pdf",
+        "Content-Disposition": 'attachment; filename="mapa-simpleus.pdf"',
+        "Content-Length": String(pdfBuffer.length),
+        "Cache-Control": "no-store",
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generando PDF:", error);
 
     return Response.json(
-      { error: "No se pudo generar el PDF." },
+      {
+        error: "No se pudo generar el PDF.",
+        details: error?.message || null,
+      },
       { status: 500 }
     );
   }

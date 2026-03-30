@@ -197,24 +197,51 @@ export default function Page() {
     }
   }
 
-  async function descargarPDF() {
+async function descargarPDF() {
   if (!resultado) return;
 
-  const res = await fetch("/api/generate-pdf", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(resultado),
-  });
+  try {
+    const res = await fetch("/api/generate-pdf", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(resultado),
+    });
 
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
+    if (!res.ok) {
+      let message = "No se pudo generar el PDF.";
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "mapa-simpleus.pdf";
-  a.click();
+      try {
+        const errData = await res.json();
+        message = errData?.error || message;
+      } catch {}
+
+      throw new Error(message);
+    }
+
+    const blob = await res.blob();
+
+    if (blob.size === 0) {
+      throw new Error("El PDF se generó vacío.");
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mapa-simpleus.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Ocurrió un error al descargar el PDF.";
+
+    alert(message);
+  }
 }
 
   const urgenciaStyles = resultado
