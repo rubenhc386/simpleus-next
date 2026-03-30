@@ -197,6 +197,26 @@ export default function Page() {
     }
   }
 
+  async function descargarPDF() {
+  if (!resultado) return;
+
+  const res = await fetch("/api/generate-pdf", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(resultado),
+  });
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "mapa-simpleus.pdf";
+  a.click();
+}
+
   const urgenciaStyles = resultado
     ? getUrgenciaStyles(resultado.urgencia)
     : null;
@@ -537,6 +557,30 @@ export default function Page() {
                 {urgenciaStyles.label}
               </span>
             </div>
+
+<div
+  style={{
+    display: "flex",
+    gap: "12px",
+    flexWrap: "wrap",
+  }}
+>
+  <button
+    type="button"
+    onClick={descargarPDF}
+    style={{
+      background: "#111827",
+      color: "white",
+      padding: "12px 18px",
+      borderRadius: "10px",
+      border: "none",
+      fontWeight: 700,
+      cursor: "pointer",
+    }}
+  >
+    Descargar PDF
+  </button>
+</div>
 
             <div>
               <strong>Qué es esta carta</strong>
