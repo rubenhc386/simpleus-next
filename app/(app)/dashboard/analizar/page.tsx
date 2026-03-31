@@ -201,6 +201,8 @@ async function descargarPDF() {
   if (!resultado) return;
 
   try {
+    console.log("RESULTADO ENVIADO A PDF:", resultado);
+
     const res = await fetch("/api/generate-pdf", {
       method: "POST",
       headers: {
@@ -209,15 +211,28 @@ async function descargarPDF() {
       body: JSON.stringify(resultado),
     });
 
+    const contentType = res.headers.get("content-type") || "";
+
     if (!res.ok) {
       let message = "No se pudo generar el PDF.";
+      let details = "";
 
       try {
         const errData = await res.json();
         message = errData?.error || message;
-      } catch {}
+        details = errData?.details || "";
+        console.error("ERROR DEL ENDPOINT PDF:", errData);
+      } catch (parseError) {
+        console.error("No se pudo leer el JSON de error:", parseError);
+      }
 
-      throw new Error(message);
+      throw new Error(details ? `${message}\n\nDetalle: ${details}` : message);
+    }
+
+    if (!contentType.includes("application/pdf")) {
+      const text = await res.text();
+      console.error("La respuesta no fue PDF:", text);
+      throw new Error("La respuesta del servidor no fue un PDF válido.");
     }
 
     const blob = await res.blob();
@@ -240,6 +255,7 @@ async function descargarPDF() {
         ? error.message
         : "Ocurrió un error al descargar el PDF.";
 
+    console.error("ERROR FINAL descargarPDF:", error);
     alert(message);
   }
 }
