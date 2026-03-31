@@ -60,17 +60,21 @@ export default function PdfPage() {
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
-  const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [plan, setPlan] = useState<"free" | "pro" | null>(null);
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
   const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
   const isPro = plan === "pro";
   const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
   const isTrialActive = trialDaysRemaining > 0;
-
+  const isPlanLoading = plan === null;
   const bonusRemaining = Math.max(bonusAnalyses - analysisCount, 0);
 
-  const isBlocked = !isPro && !isTrialActive && bonusRemaining <= 0;
+  const isBlocked =
+    !isPlanLoading &&
+    !isPro &&
+    !isTrialActive &&
+    bonusRemaining <= 0;
 
   async function cargarConteoYPlan() {
     const {
@@ -78,7 +82,7 @@ export default function PdfPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setPlan("free");
+      setPlan(null);
       setBonusAnalyses(0);
       setTrialStartedAt(null);
       setAnalysisCount(0);
@@ -103,7 +107,7 @@ export default function PdfPage() {
 
     const { count, error: countError } = await supabase
       .from("analyses")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id);
 
     if (countError) {
@@ -145,7 +149,16 @@ export default function PdfPage() {
     try {
       setCargando(true);
       setError("");
-      setResultado(null);
+      setResultado({
+        tipo: "Analizando PDF...",
+        significado:
+          "Estamos extrayendo y revisando el contenido para generar tu Mapa SimpleUS.",
+        urgencia: "Calculando...",
+        pasos: [],
+        checklist: [],
+        calma: "Espera un momento mientras procesamos el PDF.",
+        modo: "real",
+      });
       setLimitReached(false);
 
       const {
@@ -175,7 +188,6 @@ export default function PdfPage() {
 
       if (data?.limitReached && !isPro) {
         setLimitReached(true);
-        await cargarConteoYPlan();
         return;
       }
 
@@ -184,12 +196,13 @@ export default function PdfPage() {
       }
 
       setResultado(data);
-      await cargarConteoYPlan();
+      setAnalysisCount((prev) => prev + 1);
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
           : "Ocurrió un error al analizar el PDF.";
+
       setError(message);
     } finally {
       setCargando(false);
@@ -228,12 +241,16 @@ export default function PdfPage() {
 
           <div
             style={{
-              background: isPro
+              background: isPlanLoading
+                ? "#f9fafb"
+                : isPro
                 ? "#ecfdf5"
                 : isBlocked
                 ? "#fff7ed"
                 : "#f9fafb",
-              border: isPro
+              border: isPlanLoading
+                ? "1px solid #e5e7eb"
+                : isPro
                 ? "1px solid #86efac"
                 : isBlocked
                 ? "1px solid #fdba74"
@@ -241,22 +258,31 @@ export default function PdfPage() {
               borderRadius: "10px",
               padding: "10px 14px",
               fontSize: "14px",
-              color: isPro ? "#166534" : isBlocked ? "#9a3412" : "#374151",
+              color: isPlanLoading
+                ? "#6b7280"
+                : isPro
+                ? "#166534"
+                : isBlocked
+                ? "#9a3412"
+                : "#374151",
               width: "fit-content",
               fontWeight: 600,
               marginBottom: "12px",
             }}
           >
-            {isPro ? (
+            {isPlanLoading ? (
+              <>Cargando tu cuenta...</>
+            ) : isPro ? (
               <>Plan <strong>PRO activo</strong></>
             ) : isTrialActive ? (
               <>
-                Plan gratuito: <strong>prueba activa</strong> · análisis ilimitados
-                por {trialDaysRemaining} día{trialDaysRemaining === 1 ? "" : "s"}
+                Plan gratuito: <strong>prueba activa</strong> · análisis
+                ilimitados por {trialDaysRemaining} día
+                {trialDaysRemaining === 1 ? "" : "s"}
                 {bonusAnalyses > 0 && (
                   <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
-                    (+{bonusAnalyses} análisis extra acumulados por referidos para
-                    después de la prueba)
+                    (+{bonusAnalyses} análisis extra acumulados por referidos
+                    para después de la prueba)
                   </span>
                 )}
               </>
@@ -265,19 +291,21 @@ export default function PdfPage() {
                 Plan gratuito: <strong>prueba finalizada</strong>
                 {bonusAnalyses > 0 && (
                   <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
-                    · {bonusRemaining} de {bonusAnalyses} análisis extra disponibles
-                    por referidos
+                    · {bonusRemaining} de {bonusAnalyses} análisis extra
+                    disponibles por referidos
                   </span>
                 )}
               </>
             )}
           </div>
 
-          {!isPro && (
+          {!isPro && !isPlanLoading && (
             <div
               style={{
                 background: isTrialActive ? "#eff6ff" : "#fff7ed",
-                border: isTrialActive ? "1px solid #bfdbfe" : "1px solid #fdba74",
+                border: isTrialActive
+                  ? "1px solid #bfdbfe"
+                  : "1px solid #fdba74",
                 borderRadius: "12px",
                 padding: "14px 16px",
                 color: isTrialActive ? "#1e3a8a" : "#9a3412",
@@ -289,14 +317,15 @@ export default function PdfPage() {
               {isTrialActive ? (
                 <>
                   Tu prueba gratuita de <strong>7 días</strong> sigue activa.
-                  Durante este periodo puedes analizar cartas <strong>sin límite</strong>.
+                  Durante este periodo puedes analizar cartas{" "}
+                  <strong>sin límite</strong>.
                 </>
               ) : (
                 <>
                   Tu prueba gratuita de <strong>7 días</strong> ya terminó.
-                  Durante ese tiempo podías analizar cartas sin límite. Ahora puedes
-                  seguir usando SimpleUS con análisis ganados por referidos o pasar
-                  a <strong> PRO</strong>.
+                  Durante ese tiempo podías analizar cartas sin límite. Ahora
+                  puedes seguir usando SimpleUS con análisis ganados por
+                  referidos o pasar a <strong> PRO</strong>.
                 </>
               )}
             </div>
@@ -308,7 +337,7 @@ export default function PdfPage() {
           </p>
         </div>
 
-        {isBlocked && !isPro && (
+        {isBlocked && !isPro && !isPlanLoading && (
           <div
             style={{
               background: "#fff7ed",
@@ -379,6 +408,8 @@ export default function PdfPage() {
               border: "none",
               cursor: cargando || isBlocked ? "not-allowed" : "pointer",
               fontWeight: 600,
+              opacity: cargando ? 0.7 : 1,
+              transition: "all 0.2s ease",
             }}
           >
             {isBlocked
@@ -394,7 +425,7 @@ export default function PdfPage() {
         </div>
       </section>
 
-      {limitReached && !isPro && (
+      {limitReached && !isPro && !isPlanLoading && (
         <section
           style={{
             background: "#ffffff",
@@ -415,19 +446,20 @@ export default function PdfPage() {
           <p style={{ color: "#6b7280", lineHeight: 1.6 }}>
             {isTrialActive ? (
               <>
-                Durante tu prueba gratuita de 7 días puedes analizar cartas
-                sin límite.
+                Durante tu prueba gratuita de 7 días puedes analizar cartas sin
+                límite.
               </>
             ) : bonusAnalyses > 0 ? (
               <>
-                Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir usando
-                tus <strong>{bonusRemaining}</strong> análisis ganados por referidos
-                o actualizar a <strong>SimpleUS Pro</strong>.
+                Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir
+                usando tus <strong>{bonusRemaining}</strong> análisis ganados
+                por referidos o actualizar a{" "}
+                <strong>SimpleUS Pro</strong>.
               </>
             ) : (
               <>
-                Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir usando
-                análisis ganados por referidos o actualizar a
+                Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir
+                usando análisis ganados por referidos o actualizar a
                 <strong> SimpleUS Pro</strong>.
               </>
             )}
@@ -512,7 +544,9 @@ export default function PdfPage() {
 
           <div>
             <strong>Qué podrías hacer</strong>
-            <ul style={{ marginTop: "8px", color: "#4b5563", lineHeight: 1.8 }}>
+            <ul
+              style={{ marginTop: "8px", color: "#4b5563", lineHeight: 1.8 }}
+            >
               {resultado.pasos.map((paso, index) => (
                 <li key={index}>{paso}</li>
               ))}

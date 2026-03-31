@@ -60,7 +60,7 @@ export default function Page() {
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
-  const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [plan, setPlan] = useState<"free" | "pro" | null>(null);
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
   const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
@@ -69,11 +69,13 @@ export default function Page() {
   const isTrialActive = trialDaysRemaining > 0;
 
   const bonusRemaining = Math.max(bonusAnalyses - analysisCount, 0);
+  const isPlanLoading = plan === null;
 
   const isBlocked =
-    !isPro &&
-    !isTrialActive &&
-    bonusRemaining <= 0;
+  !isPlanLoading &&
+  !isPro &&
+  !isTrialActive &&
+  bonusRemaining <= 0;
 
   async function cargarConteoYPlan() {
     const {
@@ -81,13 +83,13 @@ export default function Page() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setPlan("free");
-      setBonusAnalyses(0);
-      setTrialStartedAt(null);
-      setAnalysisCount(0);
-      setLimitReached(false);
-      return;
-    }
+  setPlan(null);
+  setBonusAnalyses(0);
+  setTrialStartedAt(null);
+  setAnalysisCount(0);
+  setLimitReached(false);
+  return;
+}
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
@@ -148,9 +150,17 @@ export default function Page() {
 
     try {
       setCargando(true);
-      setError("");
-      setResultado(null);
-      setLimitReached(false);
+setError("");
+setResultado({
+  tipo: "Analizando...",
+  significado: "Estamos procesando tu carta para generar tu Mapa SimpleUS.",
+  urgencia: "Calculando...",
+  pasos: [],
+  checklist: [],
+  calma: "Espera un momento mientras revisamos la información.",
+  modo: "real",
+});
+setLimitReached(false);
 
       const {
         data: { user },
@@ -184,7 +194,7 @@ export default function Page() {
       }
 
       setResultado(data);
-      await cargarConteoYPlan();
+setAnalysisCount((prev) => prev + 1);
     } catch (err) {
       const message =
         err instanceof Error
@@ -323,58 +333,60 @@ async function descargarPDF() {
             fontWeight: 600,
           }}
         >
-          {isPro ? (
-            <>Plan <strong>PRO activo</strong></>
-          ) : isTrialActive ? (
-            <>
-              Plan gratuito: <strong>prueba activa</strong> · análisis ilimitados
-              por {trialDaysRemaining} día{trialDaysRemaining === 1 ? "" : "s"}
-              {bonusAnalyses > 0 && (
-                <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
-                  (+{bonusAnalyses} análisis extra acumulados por referidos para
-                  después de la prueba)
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              Plan gratuito: <strong>prueba finalizada</strong>
-              {bonusAnalyses > 0 && (
-                <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
-                  · {bonusRemaining} de {bonusAnalyses} análisis extra disponibles
-                  por referidos
-                </span>
-              )}
-            </>
-          )}
+          {isPlanLoading ? (
+  <>Cargando tu cuenta...</>
+) : isPro ? (
+  <>Plan <strong>PRO activo</strong></>
+) : isTrialActive ? (
+  <>
+    Plan gratuito: <strong>prueba activa</strong> · análisis ilimitados
+    por {trialDaysRemaining} día{trialDaysRemaining === 1 ? "" : "s"}
+    {bonusAnalyses > 0 && (
+      <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
+        (+{bonusAnalyses} análisis extra acumulados por referidos para
+        después de la prueba)
+      </span>
+    )}
+  </>
+) : (
+  <>
+    Plan gratuito: <strong>prueba finalizada</strong>
+    {bonusAnalyses > 0 && (
+      <span style={{ marginLeft: "8px", color: "#1d4ed8" }}>
+        · {bonusRemaining} de {bonusAnalyses} análisis extra disponibles
+        por referidos
+      </span>
+    )}
+  </>
+)}
         </div>
 
-        {!isPro && (
-          <div
-            style={{
-              background: isTrialActive ? "#eff6ff" : "#fff7ed",
-              border: isTrialActive ? "1px solid #bfdbfe" : "1px solid #fdba74",
-              borderRadius: "12px",
-              padding: "14px 16px",
-              color: isTrialActive ? "#1e3a8a" : "#9a3412",
-              lineHeight: 1.6,
-            }}
-          >
-            {isTrialActive ? (
-              <>
-                Tu prueba gratuita de <strong>7 días</strong> sigue activa.
-                Durante este periodo puedes analizar cartas <strong>sin límite</strong>.
-              </>
-            ) : (
-              <>
-                Tu prueba gratuita de <strong>7 días</strong> ya terminó.
-                Durante ese tiempo podías analizar cartas sin límite. Ahora puedes
-                seguir usando SimpleUS con análisis ganados por referidos o activar
-                <strong> PRO</strong> para continuar sin restricciones.
-              </>
-            )}
-          </div>
-        )}
+        {!isPro && !isPlanLoading && (
+  <div
+    style={{
+      background: isTrialActive ? "#eff6ff" : "#fff7ed",
+      border: isTrialActive ? "1px solid #bfdbfe" : "1px solid #fdba74",
+      borderRadius: "12px",
+      padding: "14px 16px",
+      color: isTrialActive ? "#1e3a8a" : "#9a3412",
+      lineHeight: 1.6,
+    }}
+  >
+    {isTrialActive ? (
+      <>
+        Tu prueba gratuita de <strong>7 días</strong> sigue activa.
+        Durante este periodo puedes analizar cartas <strong>sin límite</strong>.
+      </>
+    ) : (
+      <>
+        Tu prueba gratuita de <strong>7 días</strong> ya terminó.
+        Durante ese tiempo podías analizar cartas sin límite. Ahora puedes
+        seguir usando SimpleUS con análisis ganados por referidos o activar
+        <strong> PRO</strong> para continuar sin restricciones.
+      </>
+    )}
+  </div>
+)}
 
         {isBlocked && !isPro && (
           <div
@@ -421,19 +433,21 @@ async function descargarPDF() {
           }}
         >
           <button
-            type="button"
-            onClick={analizarCarta}
-            disabled={cargando || isBlocked}
-            style={{
-              background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
-              color: "white",
-              padding: "12px 18px",
-              borderRadius: "10px",
-              border: "none",
-              cursor: cargando || isBlocked ? "not-allowed" : "pointer",
-              fontWeight: 600,
-            }}
-          >
+  type="button"
+  onClick={analizarCarta}
+  disabled={cargando || isBlocked}
+  style={{
+    background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
+    color: "white",
+    padding: "12px 18px",
+    borderRadius: "10px",
+    border: "none",
+    cursor: cargando || isBlocked ? "not-allowed" : "pointer",
+    fontWeight: 600,
+    opacity: cargando ? 0.7 : 1,
+    transition: "all 0.2s ease",
+  }}
+>
             {isBlocked
               ? "Acceso bloqueado"
               : cargando

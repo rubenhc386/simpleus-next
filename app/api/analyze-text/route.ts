@@ -91,8 +91,7 @@ export async function POST(req: Request) {
 
     const currentCount = count ?? 0;
 
-    const canAnalyze =
-      isPro || isTrialActive || bonusAnalyses > currentCount;
+    const canAnalyze = isPro || isTrialActive || bonusAnalyses > currentCount;
 
     if (!canAnalyze) {
       return Response.json(
@@ -166,7 +165,7 @@ ${texto}
       );
     }
 
-    const { error: insertError } = await supabaseAdmin
+    supabaseAdmin
       .from("analyses")
       .insert([
         {
@@ -180,18 +179,15 @@ ${texto}
           calma: parsed.calma,
           modo: parsed.modo ?? "real",
         },
-      ]);
-
-    if (insertError) {
-      console.error(
-        "Error guardando análisis de texto en Supabase:",
-        insertError
-      );
-      return Response.json(
-        { error: "El análisis se generó, pero no se pudo guardar." },
-        { status: 500 }
-      );
-    }
+      ])
+      .then(({ error }) => {
+        if (error) {
+          console.error(
+            "Error guardando análisis de texto en Supabase:",
+            error
+          );
+        }
+      });
 
     return Response.json(parsed);
   } catch (error: any) {

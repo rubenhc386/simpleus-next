@@ -60,14 +60,14 @@ export default function FotoPage() {
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
-  const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [plan, setPlan] = useState<"free" | "pro" | null>(null);
   const [bonusAnalyses, setBonusAnalyses] = useState(0);
   const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
 
   const isPro = plan === "pro";
   const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
   const isTrialActive = trialDaysRemaining > 0;
-
+const isPlanLoading = plan === null;
   const bonusRemaining = Math.max(bonusAnalyses - analysisCount, 0);
 
   const isBlocked = !isPro && !isTrialActive && bonusRemaining <= 0;
@@ -78,13 +78,13 @@ export default function FotoPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setPlan("free");
-      setBonusAnalyses(0);
-      setTrialStartedAt(null);
-      setAnalysisCount(0);
-      setLimitReached(false);
-      return;
-    }
+  setPlan(null);
+  setBonusAnalyses(0);
+  setTrialStartedAt(null);
+  setAnalysisCount(0);
+  setLimitReached(false);
+  return;
+}
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
@@ -153,9 +153,17 @@ export default function FotoPage() {
 
     try {
       setCargando(true);
-      setError("");
-      setResultado(null);
-      setLimitReached(false);
+setError("");
+setResultado({
+  tipo: "Analizando foto...",
+  significado: "Estamos revisando la imagen para generar tu Mapa SimpleUS.",
+  urgencia: "Calculando...",
+  pasos: [],
+  checklist: [],
+  calma: "Espera un momento mientras procesamos la foto.",
+  modo: "real",
+});
+setLimitReached(false);
 
       const {
         data: { user },
@@ -197,7 +205,7 @@ export default function FotoPage() {
       }
 
       setResultado(data);
-      await cargarConteoYPlan();
+setAnalysisCount((prev) => prev + 1);
     } catch (err) {
       const message =
         err instanceof Error
@@ -382,19 +390,21 @@ export default function FotoPage() {
           }}
         >
           <button
-            type="button"
-            onClick={analizarFoto}
-            disabled={cargando || isBlocked}
-            style={{
-              background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
-              color: "white",
-              padding: "12px 18px",
-              borderRadius: "10px",
-              border: "none",
-              cursor: cargando || isBlocked ? "not-allowed" : "pointer",
-              fontWeight: 600,
-            }}
-          >
+  type="button"
+  onClick={analizarFoto}
+  disabled={cargando || isBlocked}
+  style={{
+    background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
+    color: "white",
+    padding: "12px 18px",
+    borderRadius: "10px",
+    border: "none",
+    cursor: cargando || isBlocked ? "not-allowed" : "pointer",
+    fontWeight: 600,
+    opacity: cargando ? 0.7 : 1,
+    transition: "all 0.2s ease",
+  }}
+>
             {isBlocked
               ? "Acceso bloqueado"
               : cargando
