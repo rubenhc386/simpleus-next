@@ -9,6 +9,7 @@ type ParsedAnalysis = {
   checklist: string[];
   calma: string;
   modo?: string;
+  lugar?: string;
 };
 
 function calcularDiasRestantes(trialStartedAt: string | null) {
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
 
     const { count, error: countError } = await supabaseAdmin
       .from("analyses")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
 
     if (countError) {
@@ -117,7 +118,8 @@ Tu tarea es analizar el texto de una carta y devolver solamente JSON válido con
   "pasos": ["Paso 1", "Paso 2", "Paso 3"],
   "checklist": ["Acción concreta 1", "Acción concreta 2"],
   "calma": "Mensaje de calma y orientación",
-  "modo": "real"
+  "modo": "real",
+  "lugar": "Institución gubernamental oficial a la que convendría acudir"
 }
 
 Reglas:
@@ -130,7 +132,11 @@ Reglas:
 - El checklist debe tener entre 3 y 6 elementos.
 - El tono debe ser claro, humano y calmado.
 - Devuelve solamente JSON válido, sin texto extra.
-
+- El campo "lugar" debe mencionar solamente una institución pública u oficina gubernamental oficial cuando aplique.
+- NO sugieras negocios privados, abogados, consultores ni empresas.
+- Intenta usar el nombre más útil y reconocible de la institución oficial, por ejemplo "Internal Revenue Service (IRS)" o "Department of Motor Vehicles (DMV)".
+- Si el documento menciona claramente una agencia pública específica, prioriza esa agencia exacta.
+- Si no es claro a dónde acudir, usa un lugar genérico oficial como "Oficina gubernamental correspondiente".
 Texto de la carta:
 """
 ${texto}
@@ -166,20 +172,21 @@ ${texto}
     }
 
     supabaseAdmin
-      .from("analyses")
-      .insert([
-        {
-          user_id: userId,
-          original_text: texto,
-          tipo: parsed.tipo,
-          significado: parsed.significado,
-          urgencia: parsed.urgencia,
-          pasos: parsed.pasos,
-          checklist: parsed.checklist ?? [],
-          calma: parsed.calma,
-          modo: parsed.modo ?? "real",
-        },
-      ])
+  .from("analyses")
+  .insert([
+    {
+      user_id: userId,
+      original_text: texto,
+      tipo: parsed.tipo,
+      significado: parsed.significado,
+      urgencia: parsed.urgencia,
+      pasos: parsed.pasos,
+      checklist: parsed.checklist ?? [],
+      calma: parsed.calma,
+      modo: parsed.modo ?? "real",
+      lugar: parsed.lugar ?? null,
+    },
+  ])
       .then(({ error }) => {
         if (error) {
           console.error(

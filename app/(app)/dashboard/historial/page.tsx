@@ -16,6 +16,7 @@ type AnalysisRow = {
   calma: string | null;
   original_text: string | null;
   modo: string | null;
+  lugar: string | null;
   user_id: string | null;
 };
 
@@ -83,12 +84,12 @@ export default function HistorialPage() {
       setPlan(nextPlan);
 
       const { data, error: dbError } = await supabase
-        .from("analyses")
-        .select(
-          "id, created_at, tipo, significado, urgencia, pasos, checklist, calma, original_text, modo, user_id"
-        )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+  .from("analyses")
+  .select(
+    "id, created_at, tipo, significado, urgencia, pasos, checklist, calma, original_text, modo, lugar, user_id"
+  )
+  .eq("user_id", user.id)
+  .order("created_at", { ascending: false });
 
       if (dbError) {
         console.error("Error cargando historial:", dbError);
@@ -348,7 +349,20 @@ export default function HistorialPage() {
                     {item.significado || "Sin explicación disponible."}
                   </p>
                 </div>
-
+{item.lugar && (
+  <div>
+    <strong>Lugar sugerido</strong>
+    <p
+      style={{
+        marginTop: "8px",
+        color: "#4b5563",
+        lineHeight: 1.7,
+      }}
+    >
+      {item.lugar}
+    </p>
+  </div>
+)}
                 <div>
                   <strong>Qué podrías hacer</strong>
                   {item.pasos && item.pasos.length > 0 ? (

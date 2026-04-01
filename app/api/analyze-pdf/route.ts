@@ -10,6 +10,10 @@ type ParsedAnalysis = {
   checklist: string[];
   calma: string;
   modo?: string;
+  lugar?: string;
+  oficial?: boolean;
+  riesgo?: string;
+  motivo?: string;
 };
 
 function extraerTextoDesdePDF(buffer: Buffer): Promise<string> {
@@ -152,7 +156,11 @@ Tu tarea es analizar el texto de una carta y devolver solamente JSON válido con
   "pasos": ["Paso 1", "Paso 2", "Paso 3"],
   "checklist": ["Acción concreta 1", "Acción concreta 2"],
   "calma": "Mensaje de calma y orientación",
-  "modo": "real"
+  "modo": "real",
+  "lugar": "Institución gubernamental oficial a la que convendría acudir",
+  "oficial": true,
+  "riesgo": "bajo | medio | alto",
+  "motivo": "Explicación clara del nivel de riesgo o confiabilidad"
 }
 
 Reglas:
@@ -165,7 +173,23 @@ Reglas:
 - El checklist debe tener entre 3 y 6 elementos.
 - El tono debe ser claro, humano y calmado.
 - Devuelve solamente JSON válido, sin texto extra.
-
+- El campo "lugar" debe mencionar solamente una institución pública u oficina gubernamental oficial cuando aplique.
+- NO sugieras negocios privados, abogados, consultores ni empresas.
+- Intenta usar el nombre más útil y reconocible de la institución oficial, por ejemplo "Internal Revenue Service (IRS)" o "Department of Motor Vehicles (DMV)".
+- Si el documento menciona claramente una agencia pública específica, prioriza esa agencia exacta.
+- Si no es claro a dónde acudir, usa un lugar genérico oficial como "Oficina gubernamental correspondiente".
+- Evalúa si el documento parece oficial o no.
+- El campo "oficial" debe ser true si parece provenir de una institución legítima, false si hay señales dudosas.
+- El campo "riesgo" debe ser:
+  - "bajo" si parece confiable
+  - "medio" si hay dudas
+  - "alto" si parece posible fraude o engaño
+- El campo "motivo" debe explicar claramente por qué se considera ese nivel de riesgo.
+- Presta especial atención a:
+  - enlaces sospechosos
+  - correos extraños
+  - solicitudes de pago urgentes
+  - amenazas o lenguaje alarmista
 Texto de la carta:
 """
 ${texto}
@@ -201,20 +225,21 @@ ${texto}
     }
 
     supabaseAdmin
-      .from("analyses")
-      .insert([
-        {
-          user_id: userId,
-          original_text: texto,
-          tipo: parsed.tipo,
-          significado: parsed.significado,
-          urgencia: parsed.urgencia,
-          pasos: parsed.pasos,
-          checklist: parsed.checklist ?? [],
-          calma: parsed.calma,
-          modo: parsed.modo ?? "real",
-        },
-      ])
+  .from("analyses")
+  .insert([
+    {
+      user_id: userId,
+      original_text: texto,
+      tipo: parsed.tipo,
+      significado: parsed.significado,
+      urgencia: parsed.urgencia,
+      pasos: parsed.pasos,
+      checklist: parsed.checklist ?? [],
+      calma: parsed.calma,
+      modo: parsed.modo ?? "real",
+      lugar: parsed.lugar ?? null,
+    },
+  ])
       .then(({ error }) => {
         if (error) {
           console.error("Error guardando análisis de PDF en Supabase:", error);

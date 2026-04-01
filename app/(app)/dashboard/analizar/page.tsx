@@ -13,6 +13,10 @@ type ResultadoMapa = {
   checklist?: string[];
   calma: string;
   modo?: string;
+  lugar?: string;
+  oficial?: boolean;
+  riesgo?: string;
+  motivo?: string;
 };
 
 function getUrgenciaStyles(urgencia: string) {
@@ -40,7 +44,34 @@ function getUrgenciaStyles(urgencia: string) {
     label: "Baja urgencia",
   };
 }
+function getRiesgoStyles(riesgo?: string) {
+  const value = (riesgo || "").toLowerCase();
 
+  if (value.includes("alto")) {
+    return {
+      bg: "#fee2e2",
+      border: "#fca5a5",
+      color: "#991b1b",
+      label: "Riesgo alto",
+    };
+  }
+
+  if (value.includes("medio")) {
+    return {
+      bg: "#fef3c7",
+      border: "#fcd34d",
+      color: "#92400e",
+      label: "Riesgo medio",
+    };
+  }
+
+  return {
+    bg: "#ecfdf5",
+    border: "#86efac",
+    color: "#166534",
+    label: "Riesgo bajo",
+  };
+}
 function calcularDiasRestantes(trialStartedAt: string | null) {
   if (!trialStartedAt) return 0;
 
@@ -273,6 +304,7 @@ async function descargarPDF() {
   const urgenciaStyles = resultado
     ? getUrgenciaStyles(resultado.urgencia)
     : null;
+    const riesgoStyles = resultado ? getRiesgoStyles(resultado.riesgo) : null;
 
   return (
     <div
@@ -659,7 +691,67 @@ async function descargarPDF() {
                 {resultado.urgencia}
               </p>
             </div>
+{resultado.riesgo && riesgoStyles && (
+  <div
+    style={{
+      background: riesgoStyles.bg,
+      border: `1px solid ${riesgoStyles.border}`,
+      borderRadius: "14px",
+      padding: "18px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "10px",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        gap: "10px",
+        flexWrap: "wrap",
+        alignItems: "center",
+      }}
+    >
+      <span
+        style={{
+          background: "#ffffff",
+          color: riesgoStyles.color,
+          borderRadius: "999px",
+          padding: "6px 10px",
+          fontWeight: 700,
+          fontSize: "13px",
+        }}
+      >
+        {riesgoStyles.label}
+      </span>
 
+      <span
+        style={{
+          color: riesgoStyles.color,
+          fontWeight: 600,
+          fontSize: "14px",
+        }}
+      >
+        {resultado.oficial === true
+          ? "Parece oficial"
+          : resultado.oficial === false
+          ? "Podría no ser oficial"
+          : "Revisión de confiabilidad"}
+      </span>
+    </div>
+
+    {resultado.motivo && (
+      <p
+        style={{
+          margin: 0,
+          color: riesgoStyles.color,
+          lineHeight: 1.7,
+        }}
+      >
+        {resultado.motivo}
+      </p>
+    )}
+  </div>
+)}
             <div>
               <strong>Qué podrías hacer</strong>
               <ul style={{ marginTop: "8px", color: "#4b5563" }}>
@@ -669,6 +761,69 @@ async function descargarPDF() {
               </ul>
             </div>
 
+{resultado.lugar && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+    }}
+  >
+    <div>
+      <strong>Lugar sugerido</strong>
+      <p style={{ marginTop: "8px", color: "#4b5563" }}>
+        {resultado.lugar}
+      </p>
+    </div>
+
+    <div
+      style={{
+        display: "flex",
+        gap: "10px",
+        flexWrap: "wrap",
+      }}
+    >
+      <a
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          resultado.lugar
+        )}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "inline-block",
+          background: "#1d4ed8",
+          color: "#ffffff",
+          padding: "10px 14px",
+          borderRadius: "10px",
+          textDecoration: "none",
+          fontWeight: 600,
+        }}
+      >
+        Abrir en Google Maps
+      </a>
+    </div>
+
+    <div
+      style={{
+        borderRadius: "14px",
+        overflow: "hidden",
+        border: "1px solid #e5e7eb",
+      }}
+    >
+      <iframe
+        title="Mapa del lugar sugerido"
+        width="100%"
+        height="260"
+        loading="lazy"
+        style={{ border: 0 }}
+        referrerPolicy="no-referrer-when-downgrade"
+        src={`https://www.google.com/maps?q=${encodeURIComponent(
+          resultado.lugar
+        )}&output=embed`}
+      />
+    </div>
+  </div>
+)}
             <ChecklistBox items={resultado.checklist} />
 
             <div

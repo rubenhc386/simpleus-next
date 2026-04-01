@@ -13,6 +13,10 @@ type ResultadoMapa = {
   checklist?: string[];
   calma: string;
   modo?: string;
+  lugar?: string;
+  oficial?: boolean;
+  riesgo?: string;
+  motivo?: string;
 };
 
 function getUrgenciaStyles(urgencia: string) {
@@ -40,7 +44,34 @@ function getUrgenciaStyles(urgencia: string) {
     label: "Baja urgencia",
   };
 }
+function getRiesgoStyles(riesgo?: string) {
+  const value = (riesgo || "").toLowerCase();
 
+  if (value.includes("alto")) {
+    return {
+      bg: "#fee2e2",
+      border: "#fca5a5",
+      color: "#991b1b",
+      label: "Riesgo alto",
+    };
+  }
+
+  if (value.includes("medio")) {
+    return {
+      bg: "#fef3c7",
+      border: "#fcd34d",
+      color: "#92400e",
+      label: "Riesgo medio",
+    };
+  }
+
+  return {
+    bg: "#ecfdf5",
+    border: "#86efac",
+    color: "#166534",
+    label: "Riesgo bajo",
+  };
+}
 function calcularDiasRestantes(trialStartedAt: string | null) {
   if (!trialStartedAt) return 0;
 
@@ -67,10 +98,14 @@ export default function FotoPage() {
   const isPro = plan === "pro";
   const trialDaysRemaining = calcularDiasRestantes(trialStartedAt);
   const isTrialActive = trialDaysRemaining > 0;
-const isPlanLoading = plan === null;
+  const isPlanLoading = plan === null;
   const bonusRemaining = Math.max(bonusAnalyses - analysisCount, 0);
 
-  const isBlocked = !isPro && !isTrialActive && bonusRemaining <= 0;
+  const isBlocked =
+    !isPlanLoading &&
+    !isPro &&
+    !isTrialActive &&
+    bonusRemaining <= 0;
 
   async function cargarConteoYPlan() {
     const {
@@ -78,13 +113,13 @@ const isPlanLoading = plan === null;
     } = await supabase.auth.getUser();
 
     if (!user) {
-  setPlan(null);
-  setBonusAnalyses(0);
-  setTrialStartedAt(null);
-  setAnalysisCount(0);
-  setLimitReached(false);
-  return;
-}
+      setPlan(null);
+      setBonusAnalyses(0);
+      setTrialStartedAt(null);
+      setAnalysisCount(0);
+      setLimitReached(false);
+      return;
+    }
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
@@ -103,7 +138,7 @@ const isPlanLoading = plan === null;
 
     const { count, error: countError } = await supabase
       .from("analyses")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id);
 
     if (countError) {
@@ -153,17 +188,17 @@ const isPlanLoading = plan === null;
 
     try {
       setCargando(true);
-setError("");
-setResultado({
-  tipo: "Analizando foto...",
-  significado: "Estamos revisando la imagen para generar tu Mapa SimpleUS.",
-  urgencia: "Calculando...",
-  pasos: [],
-  checklist: [],
-  calma: "Espera un momento mientras procesamos la foto.",
-  modo: "real",
-});
-setLimitReached(false);
+      setError("");
+      setResultado({
+        tipo: "Analizando foto...",
+        significado: "Estamos revisando la imagen para generar tu Mapa SimpleUS.",
+        urgencia: "Calculando...",
+        pasos: [],
+        checklist: [],
+        calma: "Espera un momento mientras procesamos la foto.",
+        modo: "real",
+      });
+      setLimitReached(false);
 
       const {
         data: { user },
@@ -196,7 +231,6 @@ setLimitReached(false);
 
       if (data?.limitReached && !isPro) {
         setLimitReached(true);
-        await cargarConteoYPlan();
         return;
       }
 
@@ -205,7 +239,7 @@ setLimitReached(false);
       }
 
       setResultado(data);
-setAnalysisCount((prev) => prev + 1);
+      setAnalysisCount((prev) => prev + 1);
     } catch (err) {
       const message =
         err instanceof Error
@@ -221,7 +255,7 @@ setAnalysisCount((prev) => prev + 1);
   const urgenciaStyles = resultado
     ? getUrgenciaStyles(resultado.urgencia)
     : null;
-
+const riesgoStyles = resultado ? getRiesgoStyles(resultado.riesgo) : null;
   return (
     <div
       style={{
@@ -250,12 +284,16 @@ setAnalysisCount((prev) => prev + 1);
 
           <div
             style={{
-              background: isPro
+              background: isPlanLoading
+                ? "#f9fafb"
+                : isPro
                 ? "#ecfdf5"
                 : isBlocked
                 ? "#fff7ed"
                 : "#f9fafb",
-              border: isPro
+              border: isPlanLoading
+                ? "1px solid #e5e7eb"
+                : isPro
                 ? "1px solid #86efac"
                 : isBlocked
                 ? "1px solid #fdba74"
@@ -263,13 +301,21 @@ setAnalysisCount((prev) => prev + 1);
               borderRadius: "10px",
               padding: "10px 14px",
               fontSize: "14px",
-              color: isPro ? "#166534" : isBlocked ? "#9a3412" : "#374151",
+              color: isPlanLoading
+                ? "#6b7280"
+                : isPro
+                ? "#166534"
+                : isBlocked
+                ? "#9a3412"
+                : "#374151",
               width: "fit-content",
               fontWeight: 600,
               marginBottom: "12px",
             }}
           >
-            {isPro ? (
+            {isPlanLoading ? (
+              <>Cargando tu cuenta...</>
+            ) : isPro ? (
               <>Plan <strong>PRO activo</strong></>
             ) : isTrialActive ? (
               <>
@@ -295,7 +341,7 @@ setAnalysisCount((prev) => prev + 1);
             )}
           </div>
 
-          {!isPro && (
+          {!isPro && !isPlanLoading && (
             <div
               style={{
                 background: isTrialActive ? "#eff6ff" : "#fff7ed",
@@ -330,7 +376,7 @@ setAnalysisCount((prev) => prev + 1);
           </p>
         </div>
 
-        {isBlocked && !isPro && (
+        {isBlocked && !isPro && !isPlanLoading && (
           <div
             style={{
               background: "#fff7ed",
@@ -390,21 +436,21 @@ setAnalysisCount((prev) => prev + 1);
           }}
         >
           <button
-  type="button"
-  onClick={analizarFoto}
-  disabled={cargando || isBlocked}
-  style={{
-    background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
-    color: "white",
-    padding: "12px 18px",
-    borderRadius: "10px",
-    border: "none",
-    cursor: cargando || isBlocked ? "not-allowed" : "pointer",
-    fontWeight: 600,
-    opacity: cargando ? 0.7 : 1,
-    transition: "all 0.2s ease",
-  }}
->
+            type="button"
+            onClick={analizarFoto}
+            disabled={cargando || isBlocked}
+            style={{
+              background: cargando || isBlocked ? "#93c5fd" : "#1d4ed8",
+              color: "white",
+              padding: "12px 18px",
+              borderRadius: "10px",
+              border: "none",
+              cursor: cargando || isBlocked ? "not-allowed" : "pointer",
+              fontWeight: 600,
+              opacity: cargando ? 0.7 : 1,
+              transition: "all 0.2s ease",
+            }}
+          >
             {isBlocked
               ? "Acceso bloqueado"
               : cargando
@@ -418,7 +464,7 @@ setAnalysisCount((prev) => prev + 1);
         </div>
       </section>
 
-      {limitReached && !isPro && (
+      {limitReached && !isPro && !isPlanLoading && (
         <section
           style={{
             background: "#ffffff",
@@ -543,6 +589,69 @@ setAnalysisCount((prev) => prev + 1);
             </ul>
           </div>
 
+{resultado.lugar && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+    }}
+  >
+    <div>
+      <strong>Lugar sugerido</strong>
+      <p style={{ marginTop: "8px", color: "#4b5563" }}>
+        {resultado.lugar}
+      </p>
+    </div>
+
+    <div
+      style={{
+        display: "flex",
+        gap: "10px",
+        flexWrap: "wrap",
+      }}
+    >
+      <a
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          resultado.lugar
+        )}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "inline-block",
+          background: "#1d4ed8",
+          color: "#ffffff",
+          padding: "10px 14px",
+          borderRadius: "10px",
+          textDecoration: "none",
+          fontWeight: 600,
+        }}
+      >
+        Abrir en Google Maps
+      </a>
+    </div>
+
+    <div
+      style={{
+        borderRadius: "14px",
+        overflow: "hidden",
+        border: "1px solid #e5e7eb",
+      }}
+    >
+      <iframe
+        title="Mapa del lugar sugerido"
+        width="100%"
+        height="260"
+        loading="lazy"
+        style={{ border: 0 }}
+        referrerPolicy="no-referrer-when-downgrade"
+        src={`https://www.google.com/maps?q=${encodeURIComponent(
+          resultado.lugar
+        )}&output=embed`}
+      />
+    </div>
+  </div>
+)}
           <ChecklistBox items={resultado.checklist} />
 
           <div
