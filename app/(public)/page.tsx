@@ -1,6 +1,22 @@
 import Link from "next/link";
 import PublicNavbar from "@/components/marketing/public-navbar";
 import PublicFooter from "@/components/marketing/public-footer";
+import SessionBanner from "@/components/ui/session-banner";
+import HeroDemo from "@/components/marketing/hero-demo";
+
+export const metadata = {
+  title: "SimpleUS — Entiende tus cartas en inglés",
+  description:
+    "Explicaciones claras en español para cartas del IRS, DMV, hospitales, bancos, seguros y más.",
+  openGraph: {
+    title: "SimpleUS — Entiende tus cartas en inglés",
+    description:
+      "Explicaciones claras en español para cartas importantes en inglés.",
+    url: "https://www.simpleus.app",
+    siteName: "SimpleUS",
+    type: "website",
+  },
+};
 
 export default function Page() {
   return (
@@ -20,6 +36,8 @@ export default function Page() {
           paddingRight: "20px",
         }}
       >
+        <SessionBanner />
+
         {/* HERO */}
         <section
           style={{
@@ -27,6 +45,10 @@ export default function Page() {
             border: "1px solid #e5e7eb",
             borderRadius: "16px",
             padding: "36px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: "28px",
+            alignItems: "start",
           }}
         >
           <div style={{ maxWidth: "760px" }}>
@@ -130,6 +152,8 @@ export default function Page() {
               </Link>
             </div>
           </div>
+
+          <HeroDemo />
         </section>
 
         {/* CONFIANZA */}
@@ -438,11 +462,22 @@ export default function Page() {
                 style={{
                   fontSize: "28px",
                   fontWeight: 800,
-                  margin: "0 0 12px 0",
+                  margin: "0 0 6px 0",
                   color: "#111827",
                 }}
               >
                 $8.99 / mes
+              </p>
+
+              <p
+                style={{
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  margin: "0 0 12px 0",
+                  color: "#166534",
+                }}
+              >
+                o $89.90 / año
               </p>
 
               <ul

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type AnalysisRow = {
@@ -25,12 +26,13 @@ function calcularDiasRestantes(trialStartedAt: string | null) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState(0);
   const [ultimos, setUltimos] = useState<AnalysisRow[]>([]);
   const [plan, setPlan] = useState<"free" | "pro" | null>(null);
-  const [cargandoPago, setCargandoPago] = useState(false);
-  const [mensajePago, setMensajePago] = useState("");
+  const [planType, setPlanType] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState("");
   const [affiliateCode, setAffiliateCode] = useState("");
   const [isAffiliate, setIsAffiliate] = useState(false);
@@ -51,15 +53,15 @@ export default function DashboardPage() {
 
   const affiliateCommission = affiliateRevenue * 0.3;
 
-const progressPercent = useMemo(() => {
-  if (plan === null) return 0;
-  if (plan === "pro") return 100;
-  if (isTrialActive) return 100;
-  if (bonusAnalyses <= 0) return 0;
+  const progressPercent = useMemo(() => {
+    if (plan === null) return 0;
+    if (plan === "pro") return 100;
+    if (isTrialActive) return 100;
+    if (bonusAnalyses <= 0) return 0;
 
-  const usedBonus = Math.min(count, bonusAnalyses);
-  return Math.round((usedBonus / bonusAnalyses) * 100);
-}, [count, plan, isTrialActive, bonusAnalyses]);
+    const usedBonus = Math.min(count, bonusAnalyses);
+    return Math.round((usedBonus / bonusAnalyses) * 100);
+  }, [count, plan, isTrialActive, bonusAnalyses]);
 
   const referralLink = isAffiliate
     ? affiliateCode
@@ -97,6 +99,7 @@ const progressPercent = useMemo(() => {
         if (!session?.user) {
           if (active) {
             setPlan(null);
+            setPlanType(null);
             setCount(0);
             setUltimos([]);
             setReferralCode("");
@@ -116,11 +119,11 @@ const progressPercent = useMemo(() => {
 
         const user = session.user;
         setUserEmail(user.email || "");
-
+await new Promise((res) => setTimeout(res, 1500));
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select(
-            "plan, referral_code, affiliate_code, is_affiliate, referrals_count, bonus_analyses, trial_started_at"
+            "plan, plan_type, referral_code, affiliate_code, is_affiliate, referrals_count, bonus_analyses, trial_started_at"
           )
           .eq("id", user.id)
           .single();
@@ -129,8 +132,10 @@ const progressPercent = useMemo(() => {
 
         if (!profileError && profileData?.plan === "pro") {
           setPlan("pro");
+          setPlanType(profileData?.plan_type || null);
         } else {
           setPlan("free");
+          setPlanType(null);
         }
 
         const affiliateFlag = profileData?.is_affiliate === true;
@@ -234,6 +239,7 @@ const progressPercent = useMemo(() => {
         console.error("Error general cargando dashboard:", error);
         if (active) {
           setPlan(null);
+          setPlanType(null);
           setCount(0);
           setUltimos([]);
           setReferralCode("");
@@ -261,72 +267,6 @@ const progressPercent = useMemo(() => {
     };
   }, []);
 
-  async function activarPro() {
-    try {
-      setCargandoPago(true);
-      setMensajePago("");
-
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw new Error("No se pudo leer la sesión actual.");
-      }
-
-      if (!session?.access_token) {
-        throw new Error("No se encontró una sesión activa.");
-      }
-
-      const referralCodeFromStorage =
-        localStorage.getItem("referral_code") || "";
-      const affiliateCodeFromStorage =
-        localStorage.getItem("affiliate_code") || "";
-
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify({
-          referralCode: referralCodeFromStorage,
-          affiliateCode: affiliateCodeFromStorage,
-        }),
-      });
-
-      let data: any = null;
-
-      try {
-        data = await res.json();
-      } catch {
-        throw new Error("El servidor devolvió una respuesta inválida.");
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.error || "No se pudo iniciar el pago.");
-      }
-
-      if (!data?.url) {
-        throw new Error("Stripe no devolvió una URL de pago.");
-      }
-
-      window.location.href = data.url;
-    } catch (error) {
-      const texto =
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error al iniciar el pago.";
-
-      setMensajePago(texto);
-      console.error("Error en activarPro:", error);
-    } finally {
-      setCargandoPago(false);
-    }
-  }
-
   async function copiarLinkReferido() {
     try {
       if (!referralLink) return;
@@ -336,6 +276,10 @@ const progressPercent = useMemo(() => {
     } catch (error) {
       console.error("No se pudo copiar el link:", error);
     }
+  }
+
+  function irAPro() {
+    router.push("/pro");
   }
 
   return (
@@ -508,233 +452,240 @@ const progressPercent = useMemo(() => {
       )}
 
       <section
-  style={{
-    background:
-      plan === null
-        ? "#f9fafb"
-        : plan === "pro"
-        ? "#ecfdf5"
-        : "#fff7ed",
-    border:
-      plan === null
-        ? "1px solid #e5e7eb"
-        : plan === "pro"
-        ? "1px solid #86efac"
-        : "1px solid #fdba74",
-    borderRadius: "16px",
-    padding: "24px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-  }}
->
-  <div
-    style={{
-      fontSize: "13px",
-      fontWeight: 700,
-      color:
-        plan === null
-          ? "#6b7280"
-          : plan === "pro"
-          ? "#15803d"
-          : "#c2410c",
-    }}
-  >
-    Tu siguiente paso
-  </div>
-
-  {plan === null ? (
-    <>
-      <h2 style={{ margin: 0, fontSize: "28px", color: "#111827" }}>
-        Cargando tu cuenta...
-      </h2>
-
-      <p
         style={{
-          margin: 0,
-          lineHeight: 1.7,
-          color: "#6b7280",
-          maxWidth: "820px",
-        }}
-      >
-        Estamos verificando tu plan y tus privilegios para mostrarte la
-        información correcta.
-      </p>
-    </>
-  ) : plan === "pro" ? (
-    <>
-      <h2 style={{ margin: 0, fontSize: "28px", color: "#166534" }}>
-        Tu acceso PRO está activo
-      </h2>
-
-      <p
-        style={{
-          margin: 0,
-          lineHeight: 1.7,
-          color: "#166534",
-          maxWidth: "820px",
-        }}
-      >
-        Puedes analizar todas tus cartas sin límite y tomar decisiones con
-        claridad.
-      </p>
-    </>
-  ) : (
-    <>
-      <h2 style={{ margin: 0, fontSize: "28px", color: "#111827" }}>
-        {isTrialActive
-          ? "Tu prueba gratuita está activa"
-          : "Tu prueba gratuita terminó"}
-      </h2>
-
-      <p
-        style={{
-          margin: 0,
-          lineHeight: 1.7,
-          color: "#7c2d12",
-          maxWidth: "820px",
-        }}
-      >
-        {isTrialActive
-          ? `Tu prueba gratuita de 7 días sigue activa. Te quedan ${trialDaysRemaining} día${
-              trialDaysRemaining === 1 ? "" : "s"
-            } con análisis ilimitados.`
-          : "Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir usando análisis ganados por referidos o pasar a PRO para continuar sin restricciones."}
-      </p>
-
-      {isTrialActive ? (
-        <p
-          style={{
-            margin: 0,
-            lineHeight: 1.7,
-            color: "#7c2d12",
-            maxWidth: "820px",
-          }}
-        >
-          Durante tu prueba puedes analizar cartas sin límite.
-        </p>
-      ) : bonusAnalyses > 0 ? (
-        <p
-          style={{
-            margin: 0,
-            lineHeight: 1.7,
-            color: "#7c2d12",
-            maxWidth: "820px",
-          }}
-        >
-          Tienes <strong>{bonusRemaining}</strong> de{" "}
-          <strong>{bonusAnalyses}</strong> análisis extra disponibles por
-          referidos.
-        </p>
-      ) : (
-        <p
-          style={{
-            margin: 0,
-            lineHeight: 1.7,
-            color: "#7c2d12",
-            maxWidth: "820px",
-          }}
-        >
-          En este momento no tienes análisis extra disponibles.
-        </p>
-      )}
-
-      {!isTrialActive && bonusAnalyses > 0 && (
-        <div
-          style={{
-            fontSize: "14px",
-            color: "#1d4ed8",
-            fontWeight: 700,
-          }}
-        >
-          Tienes +{bonusAnalyses} análisis extra ganados por referidos.
-        </div>
-      )}
-
-      <div
-        style={{
+          background:
+            plan === null
+              ? "#f9fafb"
+              : plan === "pro"
+              ? "#ecfdf5"
+              : "#fff7ed",
+          border:
+            plan === null
+              ? "1px solid #e5e7eb"
+              : plan === "pro"
+              ? "1px solid #86efac"
+              : "1px solid #fdba74",
+          borderRadius: "16px",
+          padding: "24px",
           display: "flex",
           flexDirection: "column",
-          gap: "8px",
-          maxWidth: "520px",
+          gap: "16px",
         }}
       >
         <div
           style={{
-            width: "100%",
-            height: "12px",
-            background: "#fed7aa",
-            borderRadius: "999px",
-            overflow: "hidden",
-            border: "1px solid #fdba74",
-          }}
-        >
-          <div
-            style={{
-              width: `${progressPercent}%`,
-              height: "100%",
-              background: "#ea580c",
-              borderRadius: "999px",
-              transition: "width 0.3s ease",
-            }}
-          />
-        </div>
-
-        <div
-          style={{
-            fontSize: "14px",
+            fontSize: "13px",
             fontWeight: 700,
-            color: "#9a3412",
+            color:
+              plan === null
+                ? "#6b7280"
+                : plan === "pro"
+                ? "#15803d"
+                : "#c2410c",
           }}
         >
-          {isTrialActive
-            ? "Prueba activa · análisis ilimitados"
-            : bonusAnalyses > 0
-            ? `${Math.max(count, 0)} análisis totales guardados · ${bonusRemaining} análisis extra disponibles`
-            : "Prueba finalizada"}
+          Tu siguiente paso
         </div>
-      </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <button
-          type="button"
-          onClick={activarPro}
-          disabled={cargandoPago}
-          style={{
-            background: cargandoPago ? "#93c5fd" : "#1d4ed8",
-            color: "#ffffff",
-            padding: "12px 18px",
-            borderRadius: "10px",
-            border: "none",
-            fontWeight: 700,
-            cursor: cargandoPago ? "not-allowed" : "pointer",
-          }}
-        >
-          {cargandoPago ? "Redirigiendo..." : "Activar PRO ahora"}
-        </button>
-      </div>
+        {plan === null ? (
+          <>
+            <h2 style={{ margin: 0, fontSize: "28px", color: "#111827" }}>
+              Cargando tu cuenta...
+            </h2>
 
-      {mensajePago && (
-        <div
-          style={{
-            color: "#b91c1c",
-            fontSize: "14px",
-            lineHeight: 1.5,
-          }}
-        >
-          {mensajePago}
-        </div>
-      )}
-    </>
-  )}
-</section>
+            <p
+              style={{
+                margin: 0,
+                lineHeight: 1.7,
+                color: "#6b7280",
+                maxWidth: "820px",
+              }}
+            >
+              Estamos verificando tu plan y tus privilegios para mostrarte la
+              información correcta.
+            </p>
+          </>
+        ) : plan === "pro" ? (
+          <>
+            <h2 style={{ margin: 0, fontSize: "28px", color: "#166534" }}>
+              Tu acceso PRO está activo
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                lineHeight: 1.7,
+                color: "#166534",
+                maxWidth: "820px",
+              }}
+            >
+              Puedes analizar todas tus cartas sin límite y tomar decisiones con
+              claridad.
+            </p>
+
+            <div
+              style={{
+                width: "fit-content",
+                background: "#ffffff",
+                border: "1px solid #86efac",
+                borderRadius: "999px",
+                padding: "8px 12px",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "#166534",
+              }}
+            >
+              Tipo de plan:{" "}
+              {planType === "annual"
+                ? "Anual"
+                : planType === "monthly"
+                ? "Mensual"
+                : "PRO"}
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 style={{ margin: 0, fontSize: "28px", color: "#111827" }}>
+              {isTrialActive
+                ? "Tu prueba gratuita está activa"
+                : "Tu prueba gratuita terminó"}
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                lineHeight: 1.7,
+                color: "#7c2d12",
+                maxWidth: "820px",
+              }}
+            >
+              {isTrialActive
+                ? `Tu prueba gratuita de 7 días sigue activa. Te quedan ${trialDaysRemaining} día${
+                    trialDaysRemaining === 1 ? "" : "s"
+                  } con análisis ilimitados.`
+                : "Tu prueba gratuita de 7 días ya terminó. Ahora puedes seguir usando análisis ganados por referidos o pasar a PRO para continuar sin restricciones."}
+            </p>
+
+            {isTrialActive ? (
+              <p
+                style={{
+                  margin: 0,
+                  lineHeight: 1.7,
+                  color: "#7c2d12",
+                  maxWidth: "820px",
+                }}
+              >
+                Durante tu prueba puedes analizar cartas sin límite.
+              </p>
+            ) : bonusAnalyses > 0 ? (
+              <p
+                style={{
+                  margin: 0,
+                  lineHeight: 1.7,
+                  color: "#7c2d12",
+                  maxWidth: "820px",
+                }}
+              >
+                Tienes <strong>{bonusRemaining}</strong> de{" "}
+                <strong>{bonusAnalyses}</strong> análisis extra disponibles por
+                referidos.
+              </p>
+            ) : (
+              <p
+                style={{
+                  margin: 0,
+                  lineHeight: 1.7,
+                  color: "#7c2d12",
+                  maxWidth: "820px",
+                }}
+              >
+                En este momento no tienes análisis extra disponibles.
+              </p>
+            )}
+
+            {!isTrialActive && bonusAnalyses > 0 && (
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#1d4ed8",
+                  fontWeight: 700,
+                }}
+              >
+                Tienes +{bonusAnalyses} análisis extra ganados por referidos.
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                maxWidth: "520px",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  height: "12px",
+                  background: "#fed7aa",
+                  borderRadius: "999px",
+                  overflow: "hidden",
+                  border: "1px solid #fdba74",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${progressPercent}%`,
+                    height: "100%",
+                    background: "#ea580c",
+                    borderRadius: "999px",
+                    transition: "width 0.3s ease",
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  color: "#9a3412",
+                }}
+              >
+                {isTrialActive
+                  ? "Prueba activa · análisis ilimitados"
+                  : bonusAnalyses > 0
+                  ? `${Math.max(count, 0)} análisis totales guardados · ${bonusRemaining} análisis extra disponibles`
+                  : "Prueba finalizada"}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <button
+                type="button"
+                onClick={irAPro}
+                style={{
+                  background: "#1d4ed8",
+                  color: "#ffffff",
+                  padding: "12px 18px",
+                  borderRadius: "10px",
+                  border: "none",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Ver opciones PRO
+              </button>
+            </div>
+          </>
+        )}
+      </section>
 
       <section
         style={{

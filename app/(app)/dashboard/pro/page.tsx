@@ -1,30 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+type PlanType = "monthly" | "annual";
+
 export default function ProPage() {
-  const [loading, setLoading] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<PlanType | null>(null);
+  const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>("");
 
-  async function handleCheckout() {
-    try {
-      setLoading(true);
-
+  useEffect(() => {
+    async function cargarUsuario() {
       const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (error || !session?.access_token) {
+      setUserId(user?.id ?? null);
+      setUserEmail(user?.email ?? "");
+    }
+
+    cargarUsuario();
+  }, []);
+
+  async function handleCheckout(planType: PlanType) {
+    try {
+      setLoadingPlan(planType);
+      setError("");
+
+      if (!userId) {
         throw new Error("No hay sesión activa");
       }
 
-      const res = await fetch("/api/checkout", {
+      const affiliateCode =
+        typeof window !== "undefined"
+          ? localStorage.getItem("affiliate_code") || ""
+          : "";
+
+      const referralCode =
+        typeof window !== "undefined"
+          ? localStorage.getItem("referral_code") || ""
+          : "";
+
+      const res = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          planType,
+          userId,
+          userEmail,
+          affiliateCode,
+          referralCode,
+        }),
       });
 
       const data = await res.json();
@@ -36,16 +66,21 @@ export default function ProPage() {
       window.location.href = data.url;
     } catch (err) {
       console.error(err);
-      alert("Error al iniciar pago");
-    } finally {
-      setLoading(false);
+
+      const message =
+        err instanceof Error ? err.message : "Error al iniciar pago";
+
+      setError(message);
+      setLoadingPlan(null);
     }
   }
+
+  const isLoading = loadingPlan !== null;
 
   return (
     <div
       style={{
-        maxWidth: "900px",
+        maxWidth: "1000px",
         margin: "0 auto",
         padding: "40px 20px",
         display: "flex",
@@ -89,61 +124,204 @@ export default function ProPage() {
         <span>✔ Traducción clara al español</span>
         <span>✔ Explicación simple (sin lenguaje complicado)</span>
         <span>✔ Qué hacer paso a paso</span>
-        <span>✔ A dónde ir exactamente (DMV, IRS, etc)</span>
+        <span>✔ A dónde ir exactamente (DMV, IRS, etc.)</span>
+        <span>✔ Análisis ilimitados</span>
       </section>
 
-      {/* PRECIO */}
+      {/* PLANES */}
       <section
         style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "6px",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: "20px",
         }}
       >
+        {/* MENSUAL */}
         <div
           style={{
-            fontSize: "32px",
-            fontWeight: 700,
-            color: "#111827",
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "16px",
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
           }}
         >
-          $8.99 USD / mes
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "#111827",
+            }}
+          >
+            Plan mensual
+          </div>
+
+          <div
+            style={{
+              fontSize: "32px",
+              fontWeight: 800,
+              color: "#111827",
+            }}
+          >
+            $8.99 USD / mes
+          </div>
+
+          <div style={{ fontSize: "14px", color: "#6b7280" }}>
+            Menos de $0.30 al día para evitar errores importantes
+          </div>
+
+          <ul
+            style={{
+              lineHeight: 1.9,
+              color: "#4b5563",
+              paddingLeft: "20px",
+              margin: 0,
+            }}
+          >
+            <li>Análisis ilimitados</li>
+            <li>Acceso inmediato</li>
+            <li>Cancela cuando quieras</li>
+          </ul>
+
+          <button
+            onClick={() => handleCheckout("monthly")}
+            disabled={isLoading}
+            style={{
+              background:
+                loadingPlan === "monthly" || isLoading ? "#93c5fd" : "#1d4ed8",
+              color: "#fff",
+              padding: "16px",
+              borderRadius: "12px",
+              border: "none",
+              fontWeight: 700,
+              fontSize: "18px",
+              cursor: isLoading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loadingPlan === "monthly"
+              ? "Procesando..."
+              : "Activar plan mensual"}
+          </button>
         </div>
 
-        <div style={{ fontSize: "14px", color: "#6b7280" }}>
-          Menos de $0.30 al día para evitar errores importantes
+        {/* ANUAL */}
+        <div
+          style={{
+            background: "#eff6ff",
+            border: "2px solid #16a34a",
+            borderRadius: "16px",
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: "-12px",
+              right: "18px",
+              background: "#16a34a",
+              color: "#ffffff",
+              padding: "6px 10px",
+              borderRadius: "999px",
+              fontSize: "12px",
+              fontWeight: 700,
+            }}
+          >
+            Más popular
+          </div>
+
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "#166534",
+            }}
+          >
+            Plan anual
+          </div>
+
+          <div
+            style={{
+              fontSize: "32px",
+              fontWeight: 800,
+              color: "#111827",
+            }}
+          >
+            $89.90 USD / año
+          </div>
+
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#166534",
+              fontWeight: 700,
+            }}
+          >
+            Ahorras $17.98 al año
+          </div>
+
+          <ul
+            style={{
+              lineHeight: 1.9,
+              color: "#1e3a8a",
+              paddingLeft: "20px",
+              margin: 0,
+            }}
+          >
+            <li>Análisis ilimitados</li>
+            <li>Mejor precio por 12 meses</li>
+            <li>Acceso inmediato</li>
+            <li>Más valor a largo plazo</li>
+          </ul>
+
+          <button
+            onClick={() => handleCheckout("annual")}
+            disabled={isLoading}
+            style={{
+              background:
+                loadingPlan === "annual" || isLoading ? "#86efac" : "#16a34a",
+              color: "#fff",
+              padding: "16px",
+              borderRadius: "12px",
+              border: "none",
+              fontWeight: 700,
+              fontSize: "18px",
+              cursor: isLoading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loadingPlan === "annual"
+              ? "Procesando..."
+              : "Activar plan anual"}
+          </button>
         </div>
       </section>
 
-      {/* CTA */}
-      <section
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "10px",
-        }}
-      >
-        <button
-          onClick={handleCheckout}
-          disabled={loading}
+      {/* ERROR */}
+      {error && (
+        <section
           style={{
-            background: loading ? "#93c5fd" : "#1d4ed8",
-            color: "#fff",
-            padding: "16px",
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
             borderRadius: "12px",
-            border: "none",
-            fontWeight: 700,
-            fontSize: "18px",
-            cursor: loading ? "not-allowed" : "pointer",
+            padding: "16px",
+            color: "#991b1b",
+            lineHeight: 1.6,
           }}
         >
-          {loading ? "Procesando..." : "Activar PRO ahora"}
-        </button>
+          {error}
+        </section>
+      )}
 
-        {/* SOCIAL PROOF */}
+      {/* SOCIAL PROOF */}
+      <section>
         <div style={{ fontSize: "13px", color: "#9ca3af" }}>
           Usado por hispanos en Estados Unidos para entender cartas del
-          gobierno, bancos y seguros
+          gobierno, bancos y seguros.
         </div>
       </section>
 

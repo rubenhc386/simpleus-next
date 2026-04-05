@@ -305,7 +305,8 @@ async function descargarPDF() {
     ? getUrgenciaStyles(resultado.urgencia)
     : null;
     const riesgoStyles = resultado ? getRiesgoStyles(resultado.riesgo) : null;
-
+const mostrarAyudaExterna =
+  resultado?.riesgo === "alto" || resultado?.oficial === false;
   return (
     <div
       style={{
@@ -750,6 +751,54 @@ async function descargarPDF() {
         {resultado.motivo}
       </p>
     )}
+  </div>
+)}
+{mostrarAyudaExterna && (
+  <div
+    style={{
+      background: "#fff7ed",
+      border: "1px solid #fdba74",
+      borderRadius: "16px",
+      padding: "20px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+    }}
+  >
+    <strong style={{ fontSize: "18px", color: "#9a3412" }}>
+      Podrías necesitar ayuda adicional
+    </strong>
+
+    <p style={{ margin: 0, color: "#7c2d12", lineHeight: 1.7 }}>
+      Este caso puede requerir apoyo profesional o atención directa. Si no estás
+      seguro de cómo proceder, podrías considerar hablar con un experto.
+    </p>
+
+    <div
+      style={{
+        display: "flex",
+        gap: "10px",
+        flexWrap: "wrap",
+      }}
+    >
+      <button
+        style={{
+          background: "#1d4ed8",
+          color: "#ffffff",
+          padding: "10px 14px",
+          borderRadius: "10px",
+          border: "none",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Ver opciones de ayuda
+      </button>
+    </div>
+
+    <span style={{ fontSize: "12px", color: "#9a3412" }}>
+      SimpleUS no es asesoría legal. Solo te orienta.
+    </span>
   </div>
 )}
             <div>

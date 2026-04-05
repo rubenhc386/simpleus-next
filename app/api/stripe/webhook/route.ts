@@ -1,6 +1,13 @@
 import Stripe from "stripe";
-import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+
+export const runtime = "nodejs";
+
+type PlanType = "monthly" | "annual";
+
+function getSafePlanType(value: unknown): PlanType {
+  return value === "annual" ? "annual" : "monthly";
+}
 
 export async function POST(req: Request) {
   try {
@@ -29,8 +36,7 @@ export async function POST(req: Request) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     const body = await req.text();
-    const headersList = await headers();
-    const signature = headersList.get("stripe-signature");
+    const signature = req.headers.get("stripe-signature");
 
     if (!signature) {
       return new Response("Falta stripe-signature.", { status: 400 });
@@ -65,6 +71,8 @@ export async function POST(req: Request) {
           ? session.metadata.referralCode
           : "";
 
+      const planType = getSafePlanType(session.metadata?.planType);
+
       const stripeCustomerId =
         typeof session.customer === "string" ? session.customer : null;
 
@@ -84,6 +92,7 @@ export async function POST(req: Request) {
           .from("profiles")
           .update({
             plan: "pro",
+            plan_type: planType,
             stripe_customer_id: stripeCustomerId,
             stripe_subscription_id: stripeSubscriptionId,
           })
@@ -147,6 +156,7 @@ export async function POST(req: Request) {
         userEmail,
         affiliateCode,
         referralCode,
+        planType,
         stripeCustomerId,
         stripeSubscriptionId,
         amountTotal,
@@ -154,9 +164,53 @@ export async function POST(req: Request) {
       });
     }
 
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+
+      const stripeSubscriptionId = subscription.id;
+
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          plan: "free",
+          plan_type: null,
+          stripe_subscription_id: null,
+        })
+        .eq("stripe_subscription_id", stripeSubscriptionId);
+
+      if (profileError) {
+        console.error("Error bajando profile a free:", profileError);
+      }
+
+      console.log("Suscripción cancelada:", {
+        stripeSubscriptionId,
+      });
+    }
+
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice;
+
+      const stripeCustomerId =
+        typeof invoice.customer === "string" ? invoice.customer : null;
+
+      console.log("Pago fallido:", {
+        stripeCustomerId,
+        invoiceId: invoice.id,
+      });
+
+      // Aquí más adelante podrías:
+      // 1. marcar estado de riesgo de pago
+      // 2. disparar notificación por correo
+      // 3. mostrar aviso dentro del dashboard
+    }
+
     return new Response("ok", { status: 200 });
   } catch (error: any) {
     console.error("Error en stripe webhook:", error);
-    return new Response(`Webhook error: ${error.message}`, { status: 400 });
+
+    return new Response(
+      `Webhook error: ${error?.message || "desconocido"}`,
+      { status: 400 }
+    );
   }
 }

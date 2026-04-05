@@ -1,6 +1,23 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
+import { setGlobalNotification } from "@/lib/notifications";
 
 export default function ProCanceladoPage() {
+  useEffect(() => {
+    setGlobalNotification({
+      type: "warning",
+      title: "Pago cancelado",
+      message:
+        "No se completó tu suscripción. Puedes intentarlo de nuevo cuando quieras.",
+      primaryAction: {
+        label: "Revisar precios",
+        href: "/precios",
+      },
+    });
+  }, []);
+
   return (
     <div
       style={{

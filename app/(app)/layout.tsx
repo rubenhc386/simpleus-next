@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import PageContainer from "@/components/layout/page-container";
+import SessionGuard from "@/components/session/session-guard";
+import GlobalNotificationBanner from "@/components/ui/global-notification-banner";
 import { supabase } from "@/lib/supabase";
 
 function generarCodigo() {
@@ -18,11 +20,16 @@ export default function PrivateAppLayout({
 }) {
   const router = useRouter();
   const [checkingSession, setCheckingSession] = useState(true);
-
+  const ensuringProfileRef = useRef(false);
+const redirectingRef = useRef(false);
   useEffect(() => {
     let active = true;
 
     async function ensureProfile(userId: string) {
+      if (ensuringProfileRef.current) return;
+
+      ensuringProfileRef.current = true;
+
       try {
         const { data: existingProfile, error: profileReadError } = await supabase
           .from("profiles")
@@ -35,7 +42,6 @@ export default function PrivateAppLayout({
           return;
         }
 
-        // Si ya existe, no hacemos nada más
         if (existingProfile?.id) {
           return;
         }
@@ -55,7 +61,11 @@ export default function PrivateAppLayout({
               .eq("referral_code", referralCodeFromStorage)
               .maybeSingle();
 
-          if (!referralLookupError && referralOwner?.id && referralOwner.id !== userId) {
+          if (
+            !referralLookupError &&
+            referralOwner?.id &&
+            referralOwner.id !== userId
+          ) {
             referredById = referralOwner.id;
           }
         }
@@ -73,19 +83,19 @@ export default function PrivateAppLayout({
             generarCodigo() + Math.floor(Math.random() * 10).toString();
         }
 
-const { data: authUserData } = await supabase.auth.getUser();
-const authEmail = authUserData?.user?.email || null;
+        const { data: authUserData } = await supabase.auth.getUser();
+        const authEmail = authUserData?.user?.email || null;
 
-const { error: insertError } = await supabase.from("profiles").insert({
-  id: userId,
-  email: authEmail,
-  plan: "free",
-  referral_code: nuevoCodigo,
-  referred_by: referredById,
-  referrals_count: 0,
-  bonus_analyses: 0,
-  trial_started_at: new Date().toISOString(),
-});
+        const { error: insertError } = await supabase.from("profiles").insert({
+          id: userId,
+          email: authEmail,
+          plan: "free",
+          referral_code: nuevoCodigo,
+          referred_by: referredById,
+          referrals_count: 0,
+          bonus_analyses: 0,
+          trial_started_at: new Date().toISOString(),
+        });
 
         if (insertError) {
           console.error("Error creando profile:", insertError);
@@ -101,7 +111,10 @@ const { error: insertError } = await supabase.from("profiles").insert({
           );
 
           if (incrementError) {
-            console.error("Error incrementando referrals_count:", incrementError);
+            console.error(
+              "Error incrementando referrals_count:",
+              incrementError
+            );
           }
 
           const { error: inviterBonusError } = await supabase.rpc(
@@ -112,7 +125,10 @@ const { error: insertError } = await supabase.from("profiles").insert({
           );
 
           if (inviterBonusError) {
-            console.error("Error sumando bonus al invitador:", inviterBonusError);
+            console.error(
+              "Error sumando bonus al invitador:",
+              inviterBonusError
+            );
           }
 
           const { error: invitedBonusError } = await supabase.rpc(
@@ -132,9 +148,16 @@ const { error: insertError } = await supabase.from("profiles").insert({
         }
       } catch (error) {
         console.error("Error general asegurando profile:", error);
+      } finally {
+        ensuringProfileRef.current = false;
       }
     }
+function safeRedirect() {
+  if (redirectingRef.current) return;
 
+  redirectingRef.current = true;
+  router.replace("/");
+}
     async function verificarSesion() {
       try {
         const {
@@ -144,7 +167,7 @@ const { error: insertError } = await supabase.from("profiles").insert({
         if (!active) return;
 
         if (!user) {
-          router.replace("/login");
+          safeRedirect();
           return;
         }
 
@@ -155,7 +178,7 @@ const { error: insertError } = await supabase.from("profiles").insert({
       } catch (error) {
         console.error("Error verificando sesión:", error);
         if (!active) return;
-        router.replace("/login");
+        safeRedirect();
       }
     }
 
@@ -164,8 +187,10 @@ const { error: insertError } = await supabase.from("profiles").insert({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!active) return;
+
       if (!session?.user) {
-        router.replace("/login");
+        safeRedirect();
         return;
       }
 
@@ -218,8 +243,20 @@ const { error: insertError } = await supabase.from("profiles").insert({
         background: "#f9fafb",
       }}
     >
+      <SessionGuard />
       <Navbar />
-      <PageContainer>{children}</PageContainer>
+      <PageContainer>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+          }}
+        >
+          <GlobalNotificationBanner />
+          {children}
+        </div>
+      </PageContainer>
       <Footer />
     </div>
   );

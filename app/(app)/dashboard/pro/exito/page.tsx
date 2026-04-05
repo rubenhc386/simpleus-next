@@ -1,6 +1,23 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
+import { setGlobalNotification } from "@/lib/notifications";
 
 export default function ProExitoPage() {
+  useEffect(() => {
+    setGlobalNotification({
+      type: "success",
+      title: "¡Bienvenido a SimpleUS Pro!",
+      message:
+        "Tu pago fue procesado correctamente. Ya tienes acceso a tu experiencia PRO.",
+      primaryAction: {
+        label: "Ir al dashboard",
+        href: "/dashboard",
+      },
+    });
+  }, []);
+
   return (
     <div
       style={{
@@ -10,6 +27,7 @@ export default function ProExitoPage() {
         paddingTop: "40px",
         paddingBottom: "40px",
         maxWidth: "760px",
+        margin: "0 auto",
       }}
     >
       <div
